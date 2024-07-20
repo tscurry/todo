@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "client": "cd client && npm run dev -- --host",
-    "server": "node server/server.ts",
+    "server": "cd server && npm run start",
     "lint:client": "eslint ./client/**/*.{ts,tsx}",
     "lint:server": "eslint ./server/**/*.ts",
     "lint": "eslint .",
@@ -20,8 +20,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.6.0",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^7.13.1",
     "@typescript-eslint/parser": "^7.13.1",
     "@vitejs/plugin-react": "^4.3.1",
@@ -39,7 +37,7 @@
     "vite": "^5.3.1"
   },
   "lint-staged": {
-    "server/**/*.ts": [
+    "server/**/*.js": [
       "eslint --fix",
       "prettier --write"
     ],
