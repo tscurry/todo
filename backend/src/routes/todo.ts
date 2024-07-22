@@ -1,13 +1,27 @@
-const express = require('express');
-const pool = require('../db/db');
+import express from 'express';
+import { QueryResult } from 'pg';
+import pool from '../database/db';
 
 const router = express.Router();
+
+type Todos = {
+  // rows: {
+  todos: {
+    todo_uid: number;
+    temp_uid: string;
+    user_uid: string;
+    title: string;
+    due_date: string;
+    priority: string;
+  }[];
+  // };
+}[];
 
 router.get('/', async (req, res) => {
   const { temp_uid } = req.query;
   const user_uid = req.session.user_uid;
 
-  let todos = [];
+  let todos: QueryResult<Todos>;
 
   try {
     if (typeof user_uid !== 'undefined') {
@@ -73,4 +87,4 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

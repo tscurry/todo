@@ -4,12 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "client": "cd client && npm run dev -- --host",
-    "server": "cd server && npm run start",
-    "lint:client": "eslint ./client/**/*.{ts,tsx}",
-    "lint:server": "eslint ./server/**/*.ts",
+    "client": "cd frontend && npm run dev -- --host",
+    "server": "cd backend && npm run start",
+    "lint:client": "eslint ./frontend/**/*.{ts,tsx}",
+    "lint:server": "eslint ./backend/**/*.ts",
     "lint": "eslint .",
-    "format": "prettier --check 'client/src' 'server/'",
+    "format": "prettier --check 'frontend/src' 'backend/'",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "prepare": "husky"
@@ -37,11 +37,11 @@
     "vite": "^5.3.1"
   },
   "lint-staged": {
-    "server/**/*.js": [
+    "backend/**/*.ts": [
       "eslint --fix",
       "prettier --write"
     ],
-    "client/**/*.{ts,tsx}": [
+    "frontend/**/*.{ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ]

@@ -1,7 +1,7 @@
-const express = require('express');
-const pool = require('../db/db');
-const bcrypt = require('bcrypt');
-const { v4: uuidv4 } = require('uuid');
+import express from 'express';
+import bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
+import pool from '../database/db';
 
 const router = express.Router();
 
@@ -66,4 +66,4 @@ router.post('/logout', async (req, res) => {
   });
 });
 
-module.exports = router;
+export default router;

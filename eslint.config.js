@@ -19,7 +19,6 @@ export default [
       'no-empty-function': 'off',
       'no-unused-vars': 'warn',
       'no-undef': 'off',
-      '@typescript-eslint/no-var-requires': 'off',
     },
   },
   eslintConfigPrettier,
