@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "client": "cd frontend && npm run dev -- --host",
-    "server": "cd backend && npm run start",
+    "server": "cd backend && npm run start:dev",
     "lint:client": "eslint ./frontend/**/*.{ts,tsx}",
     "lint:server": "eslint ./backend/**/*.ts",
     "lint": "eslint .",

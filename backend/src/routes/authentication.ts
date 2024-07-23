@@ -7,6 +7,14 @@ const router = express.Router();
 
 const saltRounds = 10;
 
+router.get('/session', (req, res) => {
+  if (!req.session.user_uid) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+
+  res.status(201).json({ user_uid: req.session.user_uid });
+});
+
 router.post('/signup', async (req, res) => {
   const { username, password, temp_uid } = req.body;
   const user_uid = uuidv4();
@@ -30,8 +38,8 @@ router.post('/signup', async (req, res) => {
 
     res.status(201).json({ accountCreated: true });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error signing up' });
+    // console.error(error);
+    res.status(500).json({ error: 'error signing up' });
   }
 });
 
@@ -51,7 +59,8 @@ router.post('/login', async (req, res) => {
     if (typeof req.session.user_uid === 'undefined' || req.session.user_uid !== user.user_uid) {
       req.session.user_uid = user.user_uid;
     }
-    res.status(200).json({ message: 'Successful login', user: user });
+
+    res.status(200).json({ message: 'successful login', username: user.username });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error trying to login' });

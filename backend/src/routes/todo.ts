@@ -5,16 +5,16 @@ import pool from '../database/db';
 const router = express.Router();
 
 type Todos = {
-  // rows: {
-  todos: {
-    todo_uid: number;
-    temp_uid: string;
-    user_uid: string;
-    title: string;
-    due_date: string;
-    priority: string;
-  }[];
-  // };
+  rows: {
+    todos: {
+      todo_uid: number;
+      temp_uid: string;
+      user_uid: string;
+      title: string;
+      due_date: string;
+      priority: string;
+    }[];
+  };
 }[];
 
 router.get('/', async (req, res) => {
@@ -24,15 +24,18 @@ router.get('/', async (req, res) => {
   let todos: QueryResult<Todos>;
 
   try {
+    if (temp_uid === '')
+      return res.status(400).send('temp_uid is required for unauthenticated users');
+
     if (typeof user_uid !== 'undefined') {
       todos = await pool.query('SELECT * FROM todos WHERE user_uid = $1;', [user_uid]);
     } else {
       todos = await pool.query('SELECT * FROM todos WHERE temp_uid = $1;', [temp_uid]);
     }
 
-    res.status(200).json({ todos: todos.rows, sess: req.session });
+    res.status(200).json({ todos: todos.rows });
   } catch (error) {
-    console.error(error);
+    // console.error(error);
     res.status(500).json({ error: 'error retrieving todos' });
   }
 });
@@ -42,6 +45,8 @@ router.post('/', async (req, res) => {
   const user_uid = req.session.user_uid;
 
   try {
+    if (temp_uid === '')
+      return res.status(400).send('temp_uid is required for unauthenticated users');
     if (typeof user_uid !== 'undefined') {
       await pool.query(
         'INSERT INTO todos (user_uid, title, priority, due_date) VALUES($1, $2, $3, $4);',
@@ -55,7 +60,7 @@ router.post('/', async (req, res) => {
     }
     res.status(201).json('successfully added todo');
   } catch (error) {
-    console.error(error);
+    // console.error(error);
     res.status(500).json({ error: 'Error adding todo to database' });
   }
 });
@@ -65,6 +70,8 @@ router.put('/:id', async (req, res) => {
   const { title, priority, due_date } = req.body;
 
   try {
+    if (!title || !priority || !due_date)
+      return res.status(400).send('something has to be updated');
     await pool.query(
       'UPDATE todos SET title = $1, priority = $2, due_date = $3 WHERE todo_id = $4;',
       [title, priority, due_date, id],

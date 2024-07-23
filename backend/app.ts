@@ -11,7 +11,6 @@ import authenticationRoute from './src/routes/authentication';
 dotenv.config();
 
 const app = express();
-
 const pgSession = connectSession(session);
 
 app.use(
