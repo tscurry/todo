@@ -7,6 +7,7 @@ const router = express.Router();
 
 const saltRounds = 10;
 
+// for testing
 router.get('/session', (req, res) => {
   if (!req.session.user_uid) {
     return res.status(401).json({ error: 'unauthorized' });
@@ -60,7 +61,9 @@ router.post('/login', async (req, res) => {
       req.session.user_uid = user.user_uid;
     }
 
-    res.status(200).json({ message: 'successful login', username: user.username });
+    // delete user_uid from return
+    res.status(200).json({ message: 'successful login' });
+    // .json({ message: 'successful login', username: user.username, id: user.user_uid });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error trying to login' });

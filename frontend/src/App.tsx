@@ -1,7 +1,11 @@
+import DateDropdown from './components/DatePicker';
+import { Todo } from './components';
+
 const App = () => {
   return (
     <>
-      <p></p>
+      <DateDropdown />
+      <Todo />
     </>
   );
 };

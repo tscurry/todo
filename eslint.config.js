@@ -16,6 +16,7 @@ export default [
       indent: ['error', 2, { SwitchCase: 1 }],
       quotes: ['error', 'single', { avoidEscape: true }],
       'react/react-in-jsx-scope': 'off',
+      'react/display-name': 'off',
       'no-empty-function': 'off',
       'no-unused-vars': 'warn',
       'no-undef': 'off',

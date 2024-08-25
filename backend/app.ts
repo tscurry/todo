@@ -5,6 +5,7 @@ import session from 'express-session';
 import connectSession from 'connect-pg-simple';
 
 import pool from './src/database/db';
+import listsRoute from './src//routes/lists';
 import todoRoute from './src/routes/todo';
 import authenticationRoute from './src/routes/authentication';
 
@@ -34,13 +35,13 @@ app.use(
     secret: `${process.env.REACT_SESSION_SECRET}`,
     cookie: {
       secure: process.env.REACT_NODE_ENV === 'production' ? true : false,
-      maxAge: 5 * 60 * 1000,
-      // maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     },
   }),
 );
 
 app.use('/todos', todoRoute);
+app.use('/lists', listsRoute);
 app.use('/auth', authenticationRoute);
 
 export default app;

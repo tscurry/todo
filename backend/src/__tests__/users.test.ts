@@ -2,18 +2,9 @@ import request from 'supertest';
 import app from '../../app';
 import pool, { cronSchedule } from '../database/db';
 
-// before tests; stop task scheduler
-beforeAll(() => {
-  cronSchedule.stop();
-});
-
-afterAll(async () => {
-  await pool.end();
-});
-
 const verifiedUser = {
-  username: 'poison crapo',
-  password: 'test123',
+  username: 'poison abc',
+  password: '123',
 };
 
 const newUser = {
@@ -22,44 +13,19 @@ const newUser = {
 };
 
 describe('POST /auth', () => {
-  describe('logs in', () => {
-    describe('given the user does not exist', () => {
-      it('should return status code 401 with message', async () => {
-        const res = await request(app).post('/auth/login').send(newUser).expect(401);
+  let cookie: string;
+  beforeAll(async () => {
+    cronSchedule.stop();
 
-        expect(res.body).toEqual('user does not exist.');
-      });
-    });
+    await request(app).post('/auth/signup').send(verifiedUser).expect(201);
+    const res = await request(app).post('/auth/login').send(verifiedUser).expect(200);
 
-    describe('given user exists but password is incorrect', () => {
-      it('should return status code 401 with message', async () => {
-        const res = await request(app)
-          .post('/auth/login')
-          .send({ username: 'poison crapo', password: 'yes' })
-          .expect(401);
+    cookie = res.headers['set-cookie'][0];
+  });
 
-        expect(res.body).toEqual('incorrect password');
-      });
-    });
-
-    describe('given the user credentials are correct', () => {
-      let cookie: string;
-      it('should return 200 with message and username', async () => {
-        const res = await request(app).post('/auth/login').send(verifiedUser).expect(200);
-
-        cookie = res.headers['set-cookie'][0];
-
-        expect(res.body).toEqual({
-          message: 'successful login',
-          username: res.body.username,
-        });
-      });
-
-      it("should create a new user_session with the users' user_uid", async () => {
-        const sess = await request(app).get('/auth/session').set('Cookie', cookie).expect(201);
-        expect(sess.body).toHaveProperty('user_uid');
-      });
-    });
+  afterAll(async () => {
+    await pool.query('DELETE FROM users WHERE username = $1;', [verifiedUser.username]);
+    await pool.end();
   });
 
   describe('signs up', () => {
@@ -90,18 +56,48 @@ describe('POST /auth', () => {
       });
 
       afterAll(async () => {
-        await pool.query('DELETE FROM users WHERE username = $1', [newUser.username]);
+        await pool.query('DELETE FROM users WHERE username = $1;', [newUser.username]);
+      });
+    });
+  });
+
+  describe('logs in', () => {
+    describe('given the user does not exist', () => {
+      it('should return status code 401 with message', async () => {
+        const res = await request(app).post('/auth/login').send(newUser).expect(401);
+
+        expect(res.body).toEqual('user does not exist.');
+      });
+    });
+
+    describe('given user exists but password is incorrect', () => {
+      it('should return status code 401 with message', async () => {
+        const res = await request(app)
+          .post('/auth/login')
+          .send({ username: 'poison abc', password: 'yes' })
+          .expect(401);
+
+        expect(res.body).toEqual('incorrect password');
+      });
+    });
+
+    describe('given the user credentials are correct', () => {
+      it('should return 200 with message and username', async () => {
+        const res = await request(app).post('/auth/login').send(verifiedUser).expect(200);
+
+        cookie = res.headers['set-cookie'][0];
+
+        expect(res.body.username).toEqual(verifiedUser.username);
+      });
+
+      it("should create a new user_session with the users' user_uid", async () => {
+        const sess = await request(app).get('/auth/session').set('Cookie', cookie).expect(201);
+        expect(sess.body).toHaveProperty('user_uid');
       });
     });
   });
 
   describe('user logs out', () => {
-    let cookie: string;
-    beforeAll(async () => {
-      const res = await request(app).post('/auth/login').send(verifiedUser).expect(200);
-
-      cookie = res.headers['set-cookie'][0];
-    });
     it("should destroy the users' session", async () => {
       await request(app).post('/auth/logout').set('Cookie', cookie).expect(200);
 
