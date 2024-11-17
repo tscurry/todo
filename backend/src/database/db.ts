@@ -14,7 +14,6 @@ const pool = new Pool({
 
 // delete expired sessions from table
 export const cronSchedule = cron.schedule('*/1 * * * *', async () => {
-  //change to every hour;
   await pool.query('DELETE FROM sessions WHERE expire < NOW();');
 });
 

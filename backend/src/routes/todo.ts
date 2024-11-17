@@ -1,17 +1,32 @@
 import express from 'express';
-import { QueryResult } from 'pg';
 import pool from '../database/db';
+import { QueryResult } from 'pg';
+import { Todos } from '../utils/types';
 
 const router = express.Router();
 
-type Todos = {
-  todo_id: number;
-  temp_uid: string;
-  user_uid: string;
-  title: string;
-  due_date: string;
-  is_completed: boolean;
-};
+router.get('/total', async (req, res) => {
+  const { temp_uid } = req.query;
+  const user_uid = req.session.user_uid;
+
+  let count;
+
+  try {
+    if (temp_uid === '' && typeof user_uid === 'undefined')
+      return res.status(400).send('temp_uid is required for unauthenticated users');
+
+    if (typeof user_uid !== 'undefined') {
+      count = await pool.query('SELECT COUNT(*) FROM todos WHERE user_uid = $1', [user_uid]);
+    } else {
+      count = await pool.query('SELECT COUNT(*) FROM todos WHERE temp_uid = $1', [temp_uid]);
+    }
+
+    res.status(200).json({ count: count.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'error getting total count' });
+  }
+});
 
 router.get('/', async (req, res) => {
   const { temp_uid } = req.query;
@@ -20,15 +35,20 @@ router.get('/', async (req, res) => {
   let todos: QueryResult<Todos>;
 
   try {
-    if (temp_uid === '')
+    if (temp_uid === '' && typeof user_uid === 'undefined')
       return res.status(400).send('temp_uid is required for unauthenticated users');
 
     if (typeof user_uid !== 'undefined') {
-      todos = await pool.query('SELECT * FROM todos WHERE user_uid = $1;', [user_uid]);
+      todos = await pool.query(
+        'SELECT todos.*, user_lists.color FROM todos LEFT JOIN list_todos ON list_todos.todo_id = todos.todo_id LEFT JOIN user_lists ON user_lists.list_id = list_todos.list_id WHERE todos.user_uid = $1 AND todos.is_completed = $2 ORDER BY due_date;',
+        [user_uid, false],
+      );
     } else {
-      todos = await pool.query('SELECT * FROM todos WHERE temp_uid = $1;', [temp_uid]);
+      todos = await pool.query(
+        'SELECT * FROM todos WHERE temp_uid = $1 AND is_completed = $2 ORDER BY due_date;',
+        [temp_uid, false],
+      );
     }
-
     res.status(200).json({ todos: todos.rows });
   } catch (error) {
     console.error(error);
@@ -37,13 +57,39 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/completed', async (req, res) => {
-  const { is_completed } = req.body;
+  const { temp_uid } = req.query;
+  const user_uid = req.session.user_uid;
+
+  let count;
+  let completed;
+
   try {
-    const count = await pool.query(
-      'SELECT COUNT(is_completed) FROM todos WHERE is_completed = $1;',
-      [is_completed],
-    );
-    res.status(200).send({ sum: count.rows });
+    if (temp_uid === '' && typeof user_uid === 'undefined')
+      return res.status(400).send('temp_uid is required for unauthenticated users');
+
+    if (typeof user_uid !== 'undefined') {
+      count = await pool.query(
+        'SELECT COUNT(is_completed) FROM todos WHERE is_completed = $1 AND user_uid = $2;',
+        [true, user_uid],
+      );
+
+      completed = await pool.query(
+        'SELECT * FROM todos WHERE is_completed = $1 AND user_uid = $2;',
+        [true, user_uid],
+      );
+    } else {
+      count = await pool.query(
+        'SELECT COUNT(is_completed) FROM todos WHERE is_completed = $1 AND temp_uid = $2;',
+        [true, temp_uid],
+      );
+
+      completed = await pool.query(
+        'SELECT * FROM todos WHERE is_completed = $1 AND temp_uid = $2;',
+        [true, temp_uid],
+      );
+    }
+
+    res.status(200).send({ sum: count.rows[0], completedTodos: completed.rows });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'something went wrong' });
@@ -57,7 +103,7 @@ router.post('/', async (req, res) => {
   let todos: QueryResult<Todos>;
 
   try {
-    if (temp_uid === '')
+    if (temp_uid === '' && typeof user_uid === 'undefined')
       return res.status(400).json('temp_uid is required for unauthenticated users');
 
     if (typeof user_uid !== 'undefined') {
@@ -92,66 +138,30 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({ message: 'successfully added todo', todo_id: todos.rows[0].todo_id });
   } catch (error) {
-    // console.error(error);
-    res.status(500).json({ error: 'Error adding todo to database' });
-  }
-});
-
-router.post('/newList', async (req, res) => {
-  const { title, due_date, list_name } = req.body;
-  const user_uid = req.session.user_uid;
-
-  try {
-    // create list first
-    if (typeof user_uid !== 'undefined') {
-      const list = await pool.query(
-        'INSERT INTO user_lists (user_uid, name) VALUES($1, $2) RETURNING list_id;',
-        [user_uid, list_name],
-      );
-
-      const listId = list.rows[0].list_id;
-
-      // create the todo
-      const todo = await pool.query(
-        'INSERT INTO todos (user_uid, title, due_date) VALUES($1, $2, $3) RETURNING todo_id;',
-        [user_uid, title, due_date],
-      );
-
-      const todoId = todo.rows[0].todo_id;
-
-      // add the todo to that list
-      await pool.query('INSERT INTO list_todos (list_id, todo_id) VALUES($1, $2);', [
-        listId,
-        todoId,
-      ]);
-    } else return res.status(401).send('must have a valid user uid to create a list');
-    res.status(201).json('todo and new list successfully created');
-  } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'failed to add todo with new list.' });
+    res.status(500).json({ error: 'Error adding todo to database' });
   }
 });
 
 router.put('/:todo_id', async (req, res) => {
   const { todo_id } = req.params;
-  const { title, due_date, list_id, list_name } = req.body;
+  const { title, due_date, list_name } = req.body;
   const user_uid = req.session.user_uid;
 
-  try {
-    let listId = list_id;
+  let list_id;
 
+  try {
     if (!title || !due_date) {
       return res.status(400).json('something has to be updated');
     }
 
-    // updating todo and adding to a new list
     if (list_name) {
       const list = await pool.query(
-        'INSERT INTO user_lists (user_uid, name) VALUES($1, $2) RETURNING list_id;',
-        [user_uid, list_name],
+        'SELECT list_id FROM user_lists WHERE name = $1 AND user_uid = $2',
+        [list_name, user_uid],
       );
 
-      listId = list;
+      list_id = list.rows[0].list_id;
     }
 
     const updatedTodo = await pool.query(
@@ -164,11 +174,22 @@ router.put('/:todo_id', async (req, res) => {
     }
 
     // add todo to list
-    if (listId) {
-      await pool.query('INSERT INTO list_todos (list_id, todo_id) VALUES($1, $2);', [
-        listId,
+    if (list_id) {
+      const existingAssociation = await pool.query('SELECT * FROM list_todos WHERE todo_id = $1;', [
         todo_id,
       ]);
+
+      if (existingAssociation.rows.length > 0) {
+        await pool.query('UPDATE list_todos SET list_id = $1 WHERE todo_id = $2;', [
+          list_id,
+          todo_id,
+        ]);
+      } else {
+        await pool.query('INSERT INTO list_todos (list_id, todo_id) VALUES ($1, $2);', [
+          list_id,
+          todo_id,
+        ]);
+      }
     }
 
     res.status(200).json(updatedTodo.rows);
@@ -183,10 +204,15 @@ router.put('/:id/completed', async (req, res) => {
   const { is_completed } = req.body;
 
   try {
-    await pool.query('UPDATE todos SET is_completed = $1 WHERE todo_id = $2;', [
+    const response = await pool.query('UPDATE todos SET is_completed = $1 WHERE todo_id = $2;', [
       is_completed,
       Number(id),
     ]);
+
+    if (response) {
+      await pool.query('DELETE FROM list_todos WHERE todo_id = $1', [id]);
+    }
+
     res
       .status(200)
       .json({ message: `todo ${id} marked as ${is_completed ? 'completed' : 'not completed'}.` });

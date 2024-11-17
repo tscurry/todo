@@ -10,6 +10,7 @@ CREATE TABLE user_lists (
   list_id SERIAL PRIMARY KEY,
   user_uid UUID NOT NULL,
   name VARCHAR(100) NOT NULL,
+  color VARCHAR(7) NOT NULL,
   FOREIGN KEY (user_uid) REFERENCES users(user_uid)
 );
 

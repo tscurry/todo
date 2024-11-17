@@ -2,6 +2,7 @@ import request from 'supertest';
 import app from '../../app';
 import pool, { cronSchedule } from '../database/db';
 import { UUID } from 'crypto';
+import { Todos } from '../utils/types';
 
 // before tests; stop task scheduler
 beforeAll(() => {
@@ -64,8 +65,10 @@ beforeAll(async () => {
 afterAll(async () => {
   await pool.query('DELETE FROM todos WHERE title = $1;', [validTempTodo.title]);
   await pool.query('DELETE FROM todos WHERE title = $1;', [validUserTodo.title]);
+  await pool.query('DELETE FROM todos WHERE title = $1;', ['Complete report']);
   await pool.query('DELETE FROM user_lists WHERE name = $1', [todoWithNewList.list_name]);
   await pool.query('DELETE FROM user_lists WHERE name = $1', [todoWithExistingList.list_name]);
+  await pool.query('DELETE FROM user_lists WHERE name = $1', ['Work']);
   await pool.query('DELETE FROM users WHERE username = $1;', [verifiedUser.username]);
 
   await pool.end();
@@ -73,9 +76,13 @@ afterAll(async () => {
 
 describe('GET /todos', () => {
   describe('given user is authenticated', () => {
+    it('should get the sum of completed todos', async () => {
+      const sum = await request(app).get('/todos/completed').set('Cookie', cookie).expect(200);
+      expect(sum.body.sum).toHaveProperty('count');
+    });
+
     it('should get the todos for the authenticated user with the user_uid', async () => {
       const todosRes = await request(app).get('/todos').set('Cookie', cookie).expect(200);
-
       expect(todosRes.body.todos).toEqual(expect.any(Array));
     });
 
@@ -86,6 +93,48 @@ describe('GET /todos', () => {
         expect(todosRes.body.todos).toEqual(expect.any(Array));
       });
     });
+  });
+});
+
+describe('GET /todos with color from list', () => {
+  it('should return todos with color property if associated with list', async () => {
+    const listResponse = await request(app)
+      .post('/lists')
+      .send({ name: 'Work', testId: userUid })
+      .expect(201);
+
+    const list = listResponse.body;
+
+    const todoResponse = await request(app)
+      .post('/todos')
+      .send({
+        title: 'Complete report',
+        due_date: '2024-07-19 20:30:00',
+        list_name: list.list.name,
+      })
+      .set('Cookie', cookie)
+      .expect(201);
+
+    const todosResponse = await request(app).get('/todos').set('Cookie', cookie).expect(200);
+    const todos = todosResponse.body.todos;
+    const todoWithColor = todos.find((todo: Todos) => todo.todo_id === todoResponse.body.todo_id);
+
+    expect(todoWithColor).toHaveProperty('color', list.list.color);
+  });
+
+  it('should not include the color property for todos without an associated list', async () => {
+    const todoResponse = await request(app)
+      .post('/todos')
+      .send(validTodo)
+      .set('Cookie', cookie)
+      .expect(201);
+
+    const todosResponse = await request(app).get('/todos').set('Cookie', cookie).expect(200);
+
+    const todos = todosResponse.body.todos;
+    const unlistedTodo = todos.find((todo: Todos) => todo.todo_id === todoResponse.body.todo_id);
+
+    expect(unlistedTodo).toHaveProperty('color', null); // Check color is undefined or null as expected
   });
 });
 

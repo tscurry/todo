@@ -1,5 +1,35 @@
 import { User } from '../utils/types';
 
+//check auth status
+export const checkAuthStatus = async () => {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/status`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    const data = await response.json();
+    return data.isAuthenticated;
+  } catch (error) {
+    // console.error(error);
+    throw new Error('There was an unexpected error. Please refresh page to continue');
+  }
+};
+
+//get username
+export const getUser = async () => {
+  try {
+    const respnse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/user`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    const data = await respnse.json();
+    return data.username;
+  } catch (error) {
+    // console.error(error);
+    throw new Error('There was an unexpected error. Please refresh page to continue');
+  }
+};
+
 // signup
 export const createUser = async (user: User) => {
   const temp_uid = JSON.parse(localStorage.getItem('temp_uid')!) || '';
@@ -16,13 +46,19 @@ export const createUser = async (user: User) => {
       credentials: 'include',
     });
 
+    if (response.status === 409) {
+      const data = await response.json();
+      return data;
+    }
+
     if (response.status === 201 && temp_uid) {
       localStorage.removeItem('temp_uid');
     }
 
     return await response.json();
   } catch (error) {
-    console.error(error);
+    // console.error(error);
+    throw new Error('There was an unexpected error. Please refresh page to continue');
   }
 };
 
@@ -38,9 +74,17 @@ export const loginUser = async (user: User) => {
       }),
       credentials: 'include',
     });
-    return await response.json();
+
+    if (response.status === 401) {
+      const data = await response.json();
+      return data;
+    }
+
+    const data = await response.json();
+    return data.username;
   } catch (error) {
-    console.error(error);
+    // console.error(error);
+    throw new Error('There was an unexpected error. Please refresh page to continue');
   }
 };
 
@@ -54,6 +98,7 @@ export const logoutUser = async () => {
 
     return await response.json();
   } catch (error) {
-    console.error(error);
+    // console.error(error);
+    throw new Error('There was an unexpected error. Please refresh page to continue');
   }
 };

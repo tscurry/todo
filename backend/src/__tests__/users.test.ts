@@ -12,27 +12,50 @@ const newUser = {
   password: '123',
 };
 
+let cookie: string;
+
+beforeAll(async () => {
+  cronSchedule.stop();
+
+  await request(app).post('/auth/signup').send(verifiedUser).expect(201);
+  const res = await request(app).post('/auth/login').send(verifiedUser).expect(200);
+
+  cookie = res.headers['set-cookie'][0];
+});
+
+afterAll(async () => {
+  await pool.query('DELETE FROM users WHERE username = $1;', [verifiedUser.username]);
+  await pool.end();
+});
+
+describe('GET /auth', () => {
+  describe('gets the current users username', () => {
+    it('should return the users username', async () => {
+      const res = await request(app).get('/auth/user').set('Cookie', cookie).expect(200);
+      expect(res.body.username).toBeDefined();
+    });
+  });
+
+  describe('gets authentication status', () => {
+    it('should return false when the user isnt authenticated', async () => {
+      const res = await request(app).get('/auth/status');
+
+      expect(res.body.isAuthenticated).toEqual(false);
+    });
+
+    it('should return true when the user is authenticated', async () => {
+      const status = await request(app).get('/auth/status').set('Cookie', cookie);
+      expect(status.body.isAuthenticated).toEqual(true);
+    });
+  });
+});
+
 describe('POST /auth', () => {
-  let cookie: string;
-  beforeAll(async () => {
-    cronSchedule.stop();
-
-    await request(app).post('/auth/signup').send(verifiedUser).expect(201);
-    const res = await request(app).post('/auth/login').send(verifiedUser).expect(200);
-
-    cookie = res.headers['set-cookie'][0];
-  });
-
-  afterAll(async () => {
-    await pool.query('DELETE FROM users WHERE username = $1;', [verifiedUser.username]);
-    await pool.end();
-  });
-
   describe('signs up', () => {
     describe('given the user already exists', () => {
       it('should return 409 with message', async () => {
         const res = await request(app).post('/auth/signup').send(verifiedUser).expect(409);
-        expect(res.body).toEqual('user already exists');
+        expect(res.body.error).toEqual('user already exists');
       });
     });
 
@@ -66,7 +89,7 @@ describe('POST /auth', () => {
       it('should return status code 401 with message', async () => {
         const res = await request(app).post('/auth/login').send(newUser).expect(401);
 
-        expect(res.body).toEqual('user does not exist.');
+        expect(res.body.userError).toEqual('user does not exist.');
       });
     });
 
@@ -77,7 +100,7 @@ describe('POST /auth', () => {
           .send({ username: 'poison abc', password: 'yes' })
           .expect(401);
 
-        expect(res.body).toEqual('incorrect password');
+        expect(res.body.passwordError).toEqual('incorrect password');
       });
     });
 

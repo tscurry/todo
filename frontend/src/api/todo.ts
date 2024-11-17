@@ -1,15 +1,84 @@
-import { Todos } from '../utils/types';
+import { PostedTodos } from '../utils/types';
+
+export const getTotalCount = async () => {
+  const temp_uid = JSON.parse(localStorage.getItem('temp_uid')!) || '';
+
+  try {
+    if (temp_uid) {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/todos/total?temp_uid=${temp_uid}`,
+        {
+          method: 'GET',
+          credentials: 'include',
+        },
+      );
+      const data = await response.json();
+      return data.count;
+    } else {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos/total`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      return data.count;
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+//get completed todos
+export const getCompleted = async () => {
+  const temp_uid = JSON.parse(localStorage.getItem('temp_uid')!) || '';
+
+  try {
+    if (temp_uid) {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/todos/completed?temp_uid=${temp_uid}`,
+        {
+          method: 'GET',
+          credentials: 'include',
+        },
+      );
+      const data = await response.json();
+      return data;
+    } else {
+      const reponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos/completed`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      const data = await reponse.json();
+      return data;
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
 
 // get todos
 export const getTodos = async () => {
   const temp_uid = JSON.parse(localStorage.getItem('temp_uid')!) || '';
 
   try {
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos?temp_uid=${temp_uid}`, {
-      method: 'GET',
-      credentials: 'include',
-    });
-    return await response.json();
+    if (temp_uid) {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/todos?temp_uid=${temp_uid}`,
+        {
+          method: 'GET',
+          credentials: 'include',
+        },
+      );
+
+      const data = await response.json();
+      return data;
+    } else {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      return data;
+    }
   } catch (error) {
     console.error(error);
     throw error;
@@ -17,19 +86,27 @@ export const getTodos = async () => {
 };
 
 // create a todo
-export const postTodo = async (todoData: Todos) => {
+export const postTodo = async (todoData: PostedTodos) => {
+  const temp_uid = JSON.parse(localStorage.getItem('temp_uid')!) || '';
+
   try {
-    await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos`, {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: todoData.title,
-        priority: todoData.priority,
         due_date: todoData.due_date,
-        temp_uid: todoData.temp_uid,
+        temp_uid: temp_uid,
+        list_name: todoData.list_name,
       }),
       credentials: 'include',
     });
+
+    console.log(response);
+
+    if (response.status === 201) {
+      return 'succesfully added a new todo';
+    }
   } catch (error) {
     console.error(error);
     throw error;
@@ -37,30 +114,74 @@ export const postTodo = async (todoData: Todos) => {
 };
 
 // update a todo
-export const updateTodo = async (id: number, todoData: Todos) => {
+export const updateTodo = async (todo_id: number, todoData: PostedTodos) => {
   try {
-    await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos/${id}`, {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos/${todo_id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: todoData.title,
-        priority: todoData.priority,
         due_date: todoData.due_date,
+        list_name: todoData.list_name,
       }),
       credentials: 'include',
     });
+    if (response.status === 200) {
+      return 'success';
+    }
   } catch (error) {
     console.error(error);
     throw error;
   }
 };
 
+// mark as completed
+export const markCompleted = async (id: number) => {
+  const temp_uid = JSON.parse(localStorage.getItem('temp_uid')!) || '';
+
+  try {
+    if (!temp_uid) {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos/${id}/completed`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          is_completed: true,
+        }),
+      });
+
+      if (response) {
+        return 'success';
+      }
+    } else {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos/${id}/completed`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          is_completed: true,
+        }),
+      });
+
+      if (response) {
+        return 'success';
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 // delete a todo
 export const deleteTodo = async (id: number) => {
   try {
-    await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos/${id}`, {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos/${id}`, {
       method: 'DELETE',
     });
+
+    if (response.status === 204) {
+      return 'successfull todo deletion';
+    }
   } catch (error) {
     console.error(error);
   }
