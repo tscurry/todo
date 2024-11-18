@@ -8,7 +8,8 @@ const pool = new Pool({
   user: process.env.REACT_DB_USERNAME,
   password: process.env.REACT_DB_PASSWORD,
   host: process.env.REACT_SERVER_HOST,
-  database: 'todosapp',
+  connectionString: process.env.REACT_DB_CONNECTION_STRING,
+  database: process.env.REACT_DB,
   port: Number(process.env.REACT_DB_PORT),
 });
 
