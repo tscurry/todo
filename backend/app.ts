@@ -9,7 +9,9 @@ import listsRoute from './src//routes/lists';
 import todoRoute from './src/routes/todo';
 import authenticationRoute from './src/routes/authentication';
 
-dotenv.config();
+if (process.env.REACT_NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const app = express();
 const pgSession = connectSession(session);

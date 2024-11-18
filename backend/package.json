@@ -5,7 +5,7 @@
   "main": "server.ts",
   "scripts": {
     "test": "jest",
-    "start": "tsc --build && nodemon ./dist/server.js",
+    "start": "node ./dist/server.js",
     "start:dev": "nodemon ./server.ts",
     "build": "tsc --build"
   },
