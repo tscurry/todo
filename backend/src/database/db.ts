@@ -5,20 +5,28 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const pool = new Pool({
-  user: process.env.REACT_DB_USERNAME,
-  password: process.env.REACT_DB_PASSWORD,
-  host: process.env.REACT_SERVER_HOST,
   connectionString: process.env.REACT_DB_CONNECTION_STRING,
-  database: process.env.REACT_DB,
-  port: Number(process.env.REACT_DB_PORT),
   ssl: {
     rejectUnauthorized: false,
   },
 });
 
-// delete expired sessions from table
-export const cronSchedule = cron.schedule('*/1 * * * *', async () => {
-  await pool.query('DELETE FROM sessions WHERE expire < NOW();');
+try {
+  if (pool) {
+    console.log('Database connected successfully');
+  }
+} catch (err) {
+  console.error('Failed to connect to the database', err);
+  process.exit(1);
+}
+
+export const cronSchedule = cron.schedule('0 */1 * * *', async () => {
+  try {
+    await pool.query('DELETE FROM sessions WHERE expire < NOW();');
+    console.log('Expired sessions cleared');
+  } catch (err) {
+    console.error('Error clearing expired sessions', err);
+  }
 });
 
 cronSchedule.start();
