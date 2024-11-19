@@ -9,18 +9,16 @@ import listsRoute from './src//routes/lists';
 import todoRoute from './src/routes/todo';
 import authenticationRoute from './src/routes/authentication';
 
-if (process.env.REACT_NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
 }
 
 const app = express();
 const pgSession = connectSession(session);
 
-app.use(cors());
-
 app.use(
   cors({
-    origin: process.env.REACT_CLIENT_URL,
+    origin: process.env.CLIENT_URL,
     credentials: true,
   }),
 );
@@ -36,9 +34,9 @@ app.use(
     }),
     saveUninitialized: false,
     resave: false,
-    secret: `${process.env.REACT_SESSION_SECRET}`,
+    secret: `${process.env.SESSION_SECRET}`,
     cookie: {
-      secure: process.env.REACT_NODE_ENV === 'production' ? true : false,
+      secure: process.env.NODE_ENV === 'production' ? true : false,
       maxAge: 30 * 24 * 60 * 60 * 1000,
     },
   }),

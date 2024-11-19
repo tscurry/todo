@@ -5,13 +5,15 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const pool = new Pool({
-  connectionString: process.env.REACT_DB_CONNECTION_STRING,
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false,
   },
 });
 
 try {
+  console.log(process.env.DATABASE_URL, process.env);
+
   if (pool) {
     console.log('Database connected successfully');
   }
