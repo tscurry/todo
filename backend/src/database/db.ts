@@ -11,6 +11,9 @@ const pool = new Pool({
   connectionString: process.env.REACT_DB_CONNECTION_STRING,
   database: process.env.REACT_DB,
   port: Number(process.env.REACT_DB_PORT),
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
 // delete expired sessions from table

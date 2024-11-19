@@ -16,6 +16,8 @@ if (process.env.REACT_NODE_ENV !== 'production') {
 const app = express();
 const pgSession = connectSession(session);
 
+app.use(cors());
+
 app.use(
   cors({
     origin: process.env.REACT_CLIENT_URL,
