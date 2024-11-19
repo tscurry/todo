@@ -25,7 +25,7 @@ const Todo = () => {
     useTodo();
   const { getCompletedCount, fetchLists, setListTodos, selectedList, selectedListTodos } =
     useList();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, checkAuthentication } = useAuth();
 
   const overlayRef = React.useRef<HTMLDivElement>(null);
   const calendarRef = React.useRef<HTMLDivElement>(null);
@@ -101,6 +101,7 @@ const Todo = () => {
 
   React.useEffect(() => {
     getUserTodos();
+    checkAuthentication();
     setSelectedDate(null);
   }, [isAuthenticated]);
 

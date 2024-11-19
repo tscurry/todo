@@ -9,6 +9,7 @@ type AuthContextProps = {
   passwordError: boolean;
   signupError: boolean;
   isAuthenticated: boolean;
+  checkAuthentication: () => void;
   resetErrors: () => void;
   login: (user: User) => Promise<boolean | undefined>;
   signup: (user: User) => Promise<boolean | undefined>;
@@ -104,6 +105,7 @@ const AuthProvider = ({ children }: ContextProviderProps) => {
         login,
         signup,
         resetErrors,
+        checkAuthentication,
         userError,
         passwordError,
         signupError,
