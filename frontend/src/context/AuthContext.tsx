@@ -10,6 +10,7 @@ type AuthContextProps = {
   signupError: boolean;
   isAuthenticated: boolean;
   checkAuthentication: () => void;
+  getUsername: () => void;
   resetErrors: () => void;
   login: (user: User) => Promise<boolean | undefined>;
   signup: (user: User) => Promise<boolean | undefined>;
@@ -24,15 +25,21 @@ const AuthProvider = ({ children }: ContextProviderProps) => {
   const [signupError, setSignupError] = React.useState(false);
   const [user, setUser] = React.useState<string | null>(null);
 
+  const getUsername = async () => {
+    const username = await getUser();
+
+    if (username) setUser(username);
+  };
+
   const checkAuthentication = async () => {
     const response = await checkAuthStatus();
     if (response) {
       localStorage.removeItem('temp_uid');
-      const user = await getUser();
       setIsAuthenticated(response);
-      if (user) {
-        setUser(user);
-      }
+      // const user = await getUser();
+      // if (user) {
+      //   setUser(user);
+      // }
     } else {
       setIsAuthenticated(response);
     }
@@ -106,6 +113,7 @@ const AuthProvider = ({ children }: ContextProviderProps) => {
         signup,
         resetErrors,
         checkAuthentication,
+        getUsername,
         userError,
         passwordError,
         signupError,
