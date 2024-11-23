@@ -25,7 +25,7 @@ const Todo = () => {
     useTodo();
   const { getCompletedCount, fetchLists, setListTodos, selectedList, selectedListTodos } =
     useList();
-  const { isAuthenticated, user, checkAuthentication, getUsername } = useAuth();
+  const { isAuthenticated, user, checkAuthentication } = useAuth();
 
   const overlayRef = React.useRef<HTMLDivElement>(null);
   const calendarRef = React.useRef<HTMLDivElement>(null);
@@ -101,10 +101,12 @@ const Todo = () => {
 
   React.useEffect(() => {
     getUserTodos();
-    getUsername();
-    checkAuthentication();
     setSelectedDate(null);
   }, [isAuthenticated]);
+
+  React.useEffect(() => {
+    checkAuthentication();
+  }, []);
 
   return (
     <div className="content mb-1 overflow-y-scroll pt-10 lgmd:pt-0">

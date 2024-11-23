@@ -36,10 +36,10 @@ const AuthProvider = ({ children }: ContextProviderProps) => {
     if (response) {
       localStorage.removeItem('temp_uid');
       setIsAuthenticated(response);
-      // const user = await getUser();
-      // if (user) {
-      //   setUser(user);
-      // }
+      const user = await getUser();
+      if (user) {
+        setUser(user);
+      }
     } else {
       setIsAuthenticated(response);
     }

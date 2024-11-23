@@ -12,8 +12,6 @@ const pool = new Pool({
 });
 
 try {
-  console.log(process.env.DATABASE_URL, process.env);
-
   if (pool) {
     console.log('Database connected successfully');
   }
@@ -21,6 +19,17 @@ try {
   console.error('Failed to connect to the database', err);
   process.exit(1);
 }
+
+// const testConnection = async () => {
+//   try {
+//     const res = await pool.query('SELECT NOW();');
+//     console.log('Database connected successfully:', res.rows[0]);
+//   } catch (err) {
+//     console.error('Database connection failed:', err);
+//   }
+// };
+
+// testConnection();
 
 export const cronSchedule = cron.schedule('0 */1 * * *', async () => {
   try {
