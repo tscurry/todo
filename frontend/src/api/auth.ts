@@ -46,11 +46,6 @@ export const createUser = async (user: User) => {
       credentials: 'include',
     });
 
-    if (response.status === 409) {
-      const data = await response.json();
-      return data;
-    }
-
     if (response.status === 201 && temp_uid) {
       localStorage.removeItem('temp_uid');
     }
@@ -75,13 +70,7 @@ export const loginUser = async (user: User) => {
       credentials: 'include',
     });
 
-    if (response.status === 401) {
-      const data = await response.json();
-      return data;
-    }
-
-    const data = await response.json();
-    return data.username;
+    return await response.json();
   } catch (error) {
     // console.error(error);
     throw new Error('There was an unexpected error. Please refresh page to continue');

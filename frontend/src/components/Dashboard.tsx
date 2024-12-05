@@ -1,35 +1,32 @@
-import * as React from 'react';
 import { CreateNewList } from './Buttons';
 import { useAuth } from '../context/AuthContext';
-import Lists from './Lists';
 import { useList } from '../context/ListContext';
 import { useTodo } from '../context/TodoContext';
+import { getTodos } from '../api/todo';
+import { getListTodos } from '../api/list';
+import Lists from './Lists';
 
 const Dashboard = () => {
-  const { setTodos, getUserTodos, getTotalTodos, totalTodos, todoUpdated } = useTodo();
+  const { setTodos, totalTodos } = useTodo();
   const { isAuthenticated } = useAuth();
-  const {
-    getCompletedCount,
-    fetchLists,
-    getUserListTodos,
-    setListTodos,
-    setSelectedList,
-    selectedList,
-    lists,
-    completedCount,
-  } = useList();
+  const { getCompletedCount, setListTodos, setSelectedList, selectedList, lists, completedCount } =
+    useList();
+
+  const userTodos = async () => {
+    const todos = await getTodos();
+    if (todos) setTodos(todos);
+  };
 
   const getAllTodos = async () => {
     setSelectedList(-1);
+    await userTodos();
     setListTodos([]);
-    await getUserTodos();
-    await getTotalTodos();
   };
 
   const getListItems = async (id: number) => {
     setSelectedList(id);
 
-    const todos = await getUserListTodos(id);
+    const todos = await getListTodos(id);
     if (todos) {
       setTodos([]);
       setListTodos(todos);
@@ -45,16 +42,6 @@ const Dashboard = () => {
       setListTodos(todos);
     }
   };
-
-  React.useEffect(() => {
-    fetchLists();
-    getCompletedCount();
-    getAllTodos();
-  }, [isAuthenticated]);
-
-  React.useEffect(() => {
-    getTotalTodos();
-  }, [todoUpdated]);
 
   return (
     <div className="dashboard hidden lgmd:block bg-white shadow-sm">

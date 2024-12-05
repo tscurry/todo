@@ -1,7 +1,6 @@
 /* eslint-disable no-unused-vars */
 import * as React from 'react';
-import { checkAuthStatus, createUser, getUser, loginUser, logoutUser } from '../api/auth';
-import { ContextProviderProps, User } from '../utils/types';
+import { ContextProviderProps } from '../utils/types';
 
 type AuthContextProps = {
   user: string | null;
@@ -9,41 +8,21 @@ type AuthContextProps = {
   passwordError: boolean;
   signupError: boolean;
   isAuthenticated: boolean;
-  checkAuthentication: () => void;
-  getUsername: () => void;
+  setUser: (user: string | null) => void;
+  setSignupError: (signupError: boolean) => void;
+  setUserError: (userError: boolean) => void;
+  setPasswordError: (passwordError: boolean) => void;
+  setAuthenticated: (isAuthenticated: boolean) => void;
   resetErrors: () => void;
-  login: (user: User) => Promise<boolean | undefined>;
-  signup: (user: User) => Promise<boolean | undefined>;
-  logout: () => Promise<boolean | undefined>;
 };
 const AuthContext = React.createContext<AuthContextProps | undefined>(undefined);
 
 const AuthProvider = ({ children }: ContextProviderProps) => {
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+  const [isAuthenticated, setAuthenticated] = React.useState(false);
   const [userError, setUserError] = React.useState(false);
   const [passwordError, setPasswordError] = React.useState(false);
   const [signupError, setSignupError] = React.useState(false);
   const [user, setUser] = React.useState<string | null>(null);
-
-  const getUsername = async () => {
-    const username = await getUser();
-
-    if (username) setUser(username);
-  };
-
-  const checkAuthentication = async () => {
-    const response = await checkAuthStatus();
-    if (response) {
-      localStorage.removeItem('temp_uid');
-      setIsAuthenticated(response);
-      const user = await getUser();
-      if (user) {
-        setUser(user);
-      }
-    } else {
-      setIsAuthenticated(response);
-    }
-  };
 
   const resetErrors = () => {
     setPasswordError(false);
@@ -51,72 +30,20 @@ const AuthProvider = ({ children }: ContextProviderProps) => {
     setUserError(false);
   };
 
-  React.useEffect(() => {
-    checkAuthentication();
-  }, [isAuthenticated]);
-
-  const login = async (newUser: User) => {
-    try {
-      const response = await loginUser(newUser);
-      if (response.userError) {
-        setPasswordError(false);
-        setUserError(true);
-        return false;
-      } else if (response.passwordError) {
-        setUserError(false);
-        setPasswordError(true);
-        return false;
-      } else {
-        setUser(response);
-        setUserError(false);
-        setPasswordError(false);
-        setIsAuthenticated(true);
-        return true;
-      }
-    } catch (error) {
-      console.error(error);
-      return false;
-    }
-  };
-
-  const logout = async () => {
-    const response = await logoutUser();
-
-    if (response) {
-      setUser(null);
-      setIsAuthenticated(false);
-      return true;
-    } else {
-      setIsAuthenticated(true);
-      return false;
-    }
-  };
-
-  const signup = async (newUser: User) => {
-    const response = await createUser(newUser);
-
-    if (response.error) {
-      setSignupError(true);
-      return false;
-    } else {
-      return true;
-    }
-  };
-
   return (
     <AuthContext.Provider
       value={{
-        isAuthenticated,
         user,
-        logout,
-        login,
-        signup,
-        resetErrors,
-        checkAuthentication,
-        getUsername,
+        signupError,
+        isAuthenticated,
         userError,
         passwordError,
-        signupError,
+        setUser,
+        setSignupError,
+        setAuthenticated,
+        setUserError,
+        setPasswordError,
+        resetErrors,
       }}
     >
       {children}

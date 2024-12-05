@@ -11,6 +11,8 @@ import Overlay from './Overlay';
 import { useAuth } from '../context/AuthContext';
 import { useTodo } from '../context/TodoContext';
 import { useList } from '../context/ListContext';
+import { deleteTodo, getTodos, getTotalCount, markCompleted } from '../api/todo';
+import { getUserLists } from '../api/list';
 
 const Todo = () => {
   const [isChecked, setIsChecked] = React.useState(false);
@@ -18,14 +20,11 @@ const Todo = () => {
   const [editId, setEditId] = React.useState<number | null>(null);
   const [toggleCalendar, setToggleCalendar] = React.useState(false);
   const [selectedTodo, setSelectedTodo] = React.useState<Todos>();
-  const [renderTodos, setRenderTodos] = React.useState<Todos[]>([]);
   const [selectedDate, setSelectedDate] = React.useState<Dayjs | null>(null);
 
-  const { todos, setTodos, getUserTodos, markTodoComplete, deleteUserTodo, getTotalTodos } =
-    useTodo();
-  const { getCompletedCount, fetchLists, setListTodos, selectedList, selectedListTodos } =
-    useList();
-  const { isAuthenticated, user, checkAuthentication } = useAuth();
+  const { todos, setTotalTodos, setTodos, renderTodos, setRenderTodos } = useTodo();
+  const { getCompletedCount, setLists, setListTodos, selectedList, selectedListTodos } = useList();
+  const { isAuthenticated, user } = useAuth();
 
   const overlayRef = React.useRef<HTMLDivElement>(null);
   const calendarRef = React.useRef<HTMLDivElement>(null);
@@ -36,12 +35,27 @@ const Todo = () => {
   handleOutsideClick(overlayRef, () => setEditId(null));
   handleOutsideClick(calendarRef, () => setToggleCalendar(false));
 
+  const fetchLists = async () => {
+    const list = await getUserLists();
+    list ? setLists(list) : setLists([]);
+  };
+
+  const userTodos = async () => {
+    const fetchedTodos = await getTodos();
+    if (fetchedTodos) setTodos(fetchedTodos.todos || fetchedTodos);
+  };
+
+  const getTotal = async () => {
+    const total = await getTotalCount();
+    if (total) setTotalTodos(total.count);
+  };
+
   const handleComplete = async (todo_: Todos) => {
     setSelectedTodo(todo_);
     setIsChecked(true);
 
     setTimeout(async () => {
-      const mark = await markTodoComplete(todo_.todo_id);
+      const mark = await markCompleted(todo_.todo_id);
       await fetchLists();
       await getCompletedCount();
 
@@ -49,7 +63,7 @@ const Todo = () => {
         setRenderTodos(renderTodos.filter((todo) => todo.todo_id !== todo_.todo_id));
         setIsChecked(false);
       }
-    }, 1000);
+    }, 900);
   };
 
   const handleChange = (newDate: Dayjs | null) => {
@@ -70,10 +84,10 @@ const Todo = () => {
 
     // reset values after line through animation
     setTimeout(async () => {
-      const del = await deleteUserTodo(todo_.todo_id);
+      const del = await deleteTodo(todo_.todo_id);
       await fetchLists();
       await getCompletedCount();
-      await getTotalTodos();
+      await getTotal();
 
       if (selectedList === 0) {
         const todos = await getCompletedCount(true);
@@ -88,25 +102,16 @@ const Todo = () => {
         setRenderTodos(renderTodos.filter((todo) => todo.todo_id !== todo_.todo_id));
         setIsChecked(false);
       }
-    }, 1000);
+    }, 900);
   };
 
   React.useEffect(() => {
-    if (selectedDate === null) getUserTodos();
+    if (selectedDate === null) userTodos();
   }, [selectedDate]);
 
   React.useEffect(() => {
     todos.length > 0 ? setRenderTodos(todos) : setRenderTodos(selectedListTodos);
-  }, [todos]);
-
-  React.useEffect(() => {
-    getUserTodos();
-    setSelectedDate(null);
-  }, [isAuthenticated]);
-
-  React.useEffect(() => {
-    checkAuthentication();
-  }, []);
+  }, [todos, selectedListTodos]);
 
   return (
     <div className="content mb-1 overflow-y-scroll pt-10 lgmd:pt-0">
@@ -145,7 +150,7 @@ const Todo = () => {
       </div>
 
       <div className="mt-10 pb-5">
-        {todos.length > 0 || selectedListTodos.length > 0 ? (
+        {selectedListTodos.length > 0 || todos.length > 0 ? (
           <AnimatePresence>
             {renderTodos
               .filter((todo_) =>
@@ -205,13 +210,11 @@ const Todo = () => {
                       </svg>
                     )}
                     <div className="flex">
-                      {/* {dayjs(todo.due_date).diff(today, 'day') ? ( */}
                       <div className="rounded-md p-[6px] bg-grey mr-1">
                         <p className="font-medium text-[11px]">
                           {dayjs(todo.due_date).format('D MMM')}
                         </p>
                       </div>
-                      {/* ) : null} */}
                       <div className="flex items-center rounded-md p-[6px] bg-grey">
                         <TimeIcon />
                         <p className="ml-1 font-medium text-[11px]">

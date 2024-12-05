@@ -11,6 +11,9 @@ import { useAuth } from '../context/AuthContext';
 import { useTodo } from '../context/TodoContext';
 import { useList } from '../context/ListContext';
 import Lists from './Lists';
+import { getTodos, getTotalCount, postTodo, updateTodo } from '../api/todo';
+import { createUser, loginUser } from '../api/auth';
+import { getListTodos, getUserLists, postNewList } from '../api/list';
 
 // add animations at the end
 
@@ -26,17 +29,8 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
   const [selectedDate, setSelectedDate] = React.useState<Dayjs | null>(null);
   const [selectedTime, setSelectedTime] = React.useState<Dayjs | null>(null);
 
-  const { fetchLists, lists, createNewList, setSelectedList, selectedList, getUserListTodos } =
-    useList();
-  const {
-    todoUpdated,
-    setTodos,
-    setUpdate,
-    updateUserTodos,
-    postUserTodos,
-    getTotalTodos,
-    getUserTodos,
-  } = useTodo();
+  const { lists, selectedList, setLists, setSelectedList } = useList();
+  const { todoUpdated, setTodos, setUpdate, setTotalTodos } = useTodo();
   const { setLoading } = useLoading();
   const { isAuthenticated } = useAuth();
 
@@ -46,8 +40,23 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
     setIsEditing(false);
   };
 
+  const fetchLists = async () => {
+    const list = await getUserLists();
+    list ? setLists(list) : setLists([]);
+  };
+
+  const getTotal = async () => {
+    const total = await getTotalCount();
+    if (total) setTotalTodos(total.count);
+  };
+
+  const getUserTodos = async () => {
+    const todos = await getTodos();
+    if (todos) setTodos(todos);
+  };
+
   const handleCreateList = async (name: string) => {
-    const newList = await createNewList(name);
+    const newList = await postNewList(name);
     if (newList) {
       await fetchLists();
       setIsListInputVisible(false);
@@ -68,9 +77,7 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
 
       try {
         if (props.todo) {
-          console.log(props.todo, selectedOverlayList);
-
-          const update = await updateUserTodos(props.todo.todo_id, {
+          const update = await updateTodo(props.todo.todo_id, {
             title: todoTitle,
             due_date: combinedDate,
             list_name: selectedOverlayList?.name,
@@ -82,15 +89,12 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
 
             if (selectedList === -1) await getUserTodos();
             else {
-              const updatedListTodos = await getUserListTodos(selectedList);
-
-              if (updatedListTodos) {
-                setTodos(updatedListTodos);
-              }
+              const updatedListTodos = await getListTodos(selectedList);
+              if (updatedListTodos) setTodos(updatedListTodos);
             }
           }
         } else {
-          const post = await postUserTodos({
+          const post = await postTodo({
             title: todoTitle,
             due_date: combinedDate,
             list_name: selectedOverlayList?.name,
@@ -99,7 +103,7 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
           if (post) {
             props.close();
             setSelectedList(-1);
-            await getTotalTodos();
+            await getTotal();
             await getUserTodos();
             await fetchLists();
           }
@@ -281,7 +285,17 @@ export const AuthOverlay = (props: { close: () => void }) => {
   const [passwordVerify, setPasswordVerify] = React.useState('');
   const [isLogin, setIsLogin] = React.useState(true);
 
-  const { userError, passwordError, signup, login, signupError, resetErrors } = useAuth();
+  const {
+    userError,
+    passwordError,
+    signupError,
+    setAuthenticated,
+    setSignupError,
+    setUser,
+    resetErrors,
+    setPasswordError,
+    setUserError,
+  } = useAuth();
   const { setLoading } = useLoading();
 
   const resetVariables = () => {
@@ -295,19 +309,32 @@ export const AuthOverlay = (props: { close: () => void }) => {
     setLoading(true);
 
     if (isLogin) {
-      const response = await login({ username, password });
-      if (!response) {
+      const response = await loginUser({ username, password });
+
+      if (response.userError) {
+        setPasswordError(false);
+        setUserError(true);
+        setLoading(false);
+      } else if (response.passwordError) {
+        setUserError(false);
+        setPasswordError(true);
         setLoading(false);
       } else {
+        setPasswordError(false);
+        setUserError(false);
+        setUser(response.username);
+        setAuthenticated(true);
         setLoading(false);
+
         props.close();
       }
     } else {
-      const response = await signup({ username, password });
-      if (response) {
+      const response = await createUser({ username, password });
+      if (response.accountCreated) {
         setIsLogin(true);
         setLoading(false);
-      } else {
+      } else if (response.error) {
+        setSignupError(true);
         setLoading(false);
       }
     }
@@ -427,12 +454,17 @@ export const AuthOverlay = (props: { close: () => void }) => {
 export const CreateListOverlay = (props: { close: () => void }) => {
   const [listTitle, setListTitle] = React.useState('');
 
-  const { createNewList, fetchLists } = useList();
+  const { setLists } = useList();
   const { setLoading } = useLoading();
+
+  const fetchLists = async () => {
+    const list = await getUserLists();
+    list ? setLists(list) : setLists([]);
+  };
 
   const createList = async (name: string) => {
     setLoading(true);
-    const response = await createNewList(name);
+    const response = await postNewList(name);
     if (response) {
       await fetchLists();
       setLoading(false);
@@ -478,7 +510,7 @@ export const GlobalLoadingOverlay = () => {
   const { isLoading } = useLoading();
 
   return isLoading ? (
-    <div className="fixed left-0 right-0 inset-0 flex z-[9999] items-center justify-center bg-black bg-opacity-50">
+    <div className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center z-[9999] bg-black bg-opacity-50">
       <ClipLoader size={50} color="#fff" />
     </div>
   ) : null;

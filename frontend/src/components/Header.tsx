@@ -6,16 +6,22 @@ import { AuthOverlay, CreateListOverlay } from './Overlay';
 import { useLoading } from '../context/LoadingContext';
 import Lists from './Lists';
 import { useAuth } from '../context/AuthContext';
-import { createTempUid } from '../utils/createTempUid';
 import { useList } from '../context/ListContext';
 import { useTodo } from '../context/TodoContext';
+import { checkAuthStatus, getUser, logoutUser } from '../api/auth';
+import { createTempUid } from '../utils/createTempUid';
+import { getTodos, getTotalCount } from '../api/todo';
+import { getListTodos, getUserLists } from '../api/list';
 
-export const AuthHeader = (props: { isResponsive?: boolean }) => {
+export const AuthHeader = (props: { isResponsive?: boolean; isSidebarOpen?: boolean }) => {
   const [isOverlayOpen, setIsOverlayOpen] = React.useState(false);
   const [toggleAccount, setToggleAccount] = React.useState(false);
+
   const headerRef = React.useRef<HTMLDivElement>(null);
 
-  const { isAuthenticated, user, logout, resetErrors } = useAuth();
+  const { isAuthenticated, user, resetErrors, setUser, setAuthenticated } = useAuth();
+  const { setTodos, setTotalTodos } = useTodo();
+  const { setSelectedList, setListTodos, setLists, getCompletedCount } = useList();
   const { setLoading } = useLoading();
 
   handleOutsideClick(headerRef, () => setIsOverlayOpen(false));
@@ -23,17 +29,61 @@ export const AuthHeader = (props: { isResponsive?: boolean }) => {
   const handleLogut = async () => {
     setLoading(true);
 
-    const response = await logout();
+    const response = await logoutUser();
     if (response) {
+      await getCompletedCount();
+
+      setUser(null);
+      setLists([]);
+      setTodos([]);
+      setListTodos([]);
+      setTotalTodos(0);
+      setAuthenticated(false);
       setIsOverlayOpen(false);
+      setLoading(false);
+    } else {
+      setAuthenticated(true);
+      setLoading(false);
+    }
+  };
+
+  const fetchAll = async () => {
+    setSelectedList(-1);
+    setListTodos([]);
+
+    await getCompletedCount();
+
+    const allTodos = await getTodos();
+    if (allTodos) setTodos(allTodos.todos || allTodos);
+
+    const list = await getUserLists();
+    list ? setLists(list) : setLists([]);
+
+    const total = await getTotalCount();
+    if (total) setTotalTodos(total.count);
+  };
+
+  const auth = async () => {
+    if (!props.isSidebarOpen) {
+      setLoading(true);
+
+      const response = await checkAuthStatus();
+
+      if (response) {
+        localStorage.removeItem('temp_uid');
+        const user = await getUser();
+        if (user) setUser(user);
+        await fetchAll();
+      } else {
+        createTempUid();
+      }
+      setAuthenticated(response);
       setLoading(false);
     }
   };
 
   React.useEffect(() => {
-    if (!isAuthenticated) {
-      createTempUid();
-    }
+    auth();
   }, [isAuthenticated]);
 
   return (
@@ -136,24 +186,22 @@ const Header = () => {
   const overlayRef = React.useRef<HTMLDivElement>(null);
   const headerRef = React.useRef<HTMLDivElement>(null);
 
-  const { getTotalTodos, getUserTodos, setTodos, totalTodos } = useTodo();
-  const {
-    setListTodos,
-    setSelectedList,
-    fetchLists,
-    getCompletedCount,
-    getUserListTodos,
-    selectedList,
-    lists,
-  } = useList();
+  const { setTotalTodos, setTodos, totalTodos } = useTodo();
+  const { setListTodos, setSelectedList, getCompletedCount, selectedList, lists, completedCount } =
+    useList();
 
   handleOutsideClick(headerRef, () => setIsOpen(false));
 
   const { isAuthenticated } = useAuth();
 
-  const openSignup = () => {
-    setIsOpen(false);
-    setIsAuthOverlayOpen(!isAuthOverlayOpen);
+  const userTodos = async () => {
+    const todos = await getTodos();
+    if (todos) setTodos(todos);
+  };
+
+  const getTotal = async () => {
+    const total = await getTotalCount();
+    if (total) setTotalTodos(total.count);
   };
 
   // when list item is selected
@@ -161,7 +209,7 @@ const Header = () => {
     setIsOpen(false);
     setSelectedList(item);
 
-    const todos = await getUserListTodos(item);
+    const todos = await getListTodos(item);
     if (todos) {
       setTodos([]);
       setListTodos(todos);
@@ -183,22 +231,16 @@ const Header = () => {
     setIsOpen(false);
     setSelectedList(-1);
     setListTodos([]);
-    await getUserTodos();
-    await getTotalTodos();
+    await userTodos();
+    await getTotal();
   };
-
-  React.useEffect(() => {
-    fetchLists();
-    getCompletedCount();
-    getAllTodos();
-  }, [isAuthenticated]);
 
   return (
     <div className="lgmd:hidden header header-shadow flex items-center w-full h-[90%] transition-all relative">
       {!isOpen && (
         <div className="w-[90%] flex justify-between m-auto items-center">
           <div>
-            <AuthHeader isResponsive={true} />
+            <AuthHeader isResponsive={true} isSidebarOpen={isOverlayOpen} />
           </div>
           <Menu onClick={() => setIsOpen(!isOpen)} />
         </div>
@@ -256,12 +298,17 @@ const Header = () => {
                 <p
                   className={`${selectedList === 0 ? 'bg-white' : 'bg-grey'} transition-all duration-300 p-1 rounded-lg text-center text-sm w-9`}
                 >
-                  0
+                  {completedCount}
                 </p>
               </div>
             </div>
             <OverlayButtons
-              onClick={openSignup}
+              onClick={() => {
+                setIsOpen(false);
+                isAuthenticated
+                  ? setIsOverlayOpen(!isOverlayOpen)
+                  : setIsAuthOverlayOpen(!isAuthOverlayOpen);
+              }}
               buttonText="Create a new list"
               color="#000"
               textColor="#fff"
@@ -276,10 +323,10 @@ const Header = () => {
       {isOverlayOpen && (
         <>
           <div
-            className="fixed top-0 left-0 right-0 bottom-0 z-[998] bg-black opacity-50"
+            className="fixed top-0 left-0 right-0 bottom-0 z-[998] bg-black opacity-50 overflow-hidden"
             onClick={() => setIsOverlayOpen(false)}
           ></div>
-          <div className="flex items-center justify-center h-screen w-full m-auto">
+          <div className="absolute left-0 right-0 bottom-0 top-56 z-[999]">
             <div
               ref={overlayRef}
               className="z-[999] h-[300px] mx-auto w-[350px] xsmd:w-[400px]"

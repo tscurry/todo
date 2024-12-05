@@ -47,8 +47,7 @@ export const getCompleted = async () => {
         method: 'GET',
         credentials: 'include',
       });
-      const data = await reponse.json();
-      return data;
+      return await reponse.json();
     }
   } catch (error) {
     console.error(error);
@@ -69,15 +68,14 @@ export const getTodos = async () => {
         },
       );
 
-      const data = await response.json();
-      return data;
+      return await response.json();
     } else {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos`, {
         method: 'GET',
         credentials: 'include',
       });
       const data = await response.json();
-      return data;
+      return data.todos;
     }
   } catch (error) {
     console.error(error);
@@ -101,8 +99,6 @@ export const postTodo = async (todoData: PostedTodos) => {
       }),
       credentials: 'include',
     });
-
-    console.log(response);
 
     if (response.status === 201) {
       return 'succesfully added a new todo';

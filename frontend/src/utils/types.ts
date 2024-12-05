@@ -16,6 +16,17 @@ export type Todos = {
   is_completed?: boolean;
 };
 
+export type LoginResponse = {
+  userError: boolean;
+  passwordError: boolean;
+  username: string;
+};
+
+export type SignupResponse = {
+  error: string;
+  accountCreated: boolean;
+};
+
 export type User = {
   username: string;
   password: string;

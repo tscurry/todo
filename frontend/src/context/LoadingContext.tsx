@@ -21,6 +21,7 @@ const LoadingProvider = ({ children }: ContextProviderProps) => {
 
 export const useLoading = () => {
   const context = React.useContext(LoadingContext);
+
   if (!context) {
     throw new Error('useLoading must be used within a LoadingProvider');
   }

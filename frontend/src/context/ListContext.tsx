@@ -1,7 +1,6 @@
 /* eslint-disable no-unused-vars */
 import * as React from 'react';
 import { ContextProviderProps, ListItems, Todos } from '../utils/types';
-import { getListTodos, getUserLists, postNewList } from '../api/list';
 import { getCompleted } from '../api/todo';
 
 type ListContextProps = {
@@ -14,10 +13,8 @@ type ListContextProps = {
   setTotalCount: (count: number) => void;
   setListTodos: (todos: Todos[]) => void;
   setLists: (lists: ListItems[]) => void;
-  fetchLists: () => Promise<void>;
+
   getCompletedCount: (selected?: boolean) => Promise<Todos[]>;
-  getUserListTodos: (id: number) => Promise<Todos[] | undefined>;
-  createNewList: (name: string) => Promise<boolean | undefined>;
 };
 
 const ListContext = React.createContext<ListContextProps | undefined>(undefined);
@@ -29,28 +26,11 @@ const ListProvider = ({ children }: ContextProviderProps) => {
   const [selectedListTodos, setSelectedListTodos] = React.useState<Todos[]>([]);
   const [lists, setLists] = React.useState<ListItems[]>([]);
 
-  const fetchLists = async () => {
-    const list = await getUserLists();
-    list ? setLists(list) : setLists([]);
-  };
-
-  const createNewList = async (name: string) => {
-    const newList = await postNewList(name);
-    if (newList) return true;
-    else return false;
-  };
-
   const getCompletedCount = async (selected?: boolean) => {
     const complete = await getCompleted();
     if (complete) setCompletedCount(complete.sum?.count);
 
     if (selected) return complete.completedTodos;
-  };
-
-  const getUserListTodos = async (id: number) => {
-    const todos = await getListTodos(id);
-
-    if (todos) return todos;
   };
 
   React.useEffect(() => {
@@ -64,14 +44,11 @@ const ListProvider = ({ children }: ContextProviderProps) => {
         completedCount,
         selectedListTodos,
         selectedList,
-        setSelectedList,
         totalCount,
+        setSelectedList,
         setTotalCount,
         setListTodos: setSelectedListTodos,
-        getUserListTodos,
         setLists,
-        fetchLists,
-        createNewList,
         getCompletedCount,
       }}
     >
