@@ -73,10 +73,10 @@ export const AuthHeader = (props: { isResponsive?: boolean; isSidebarOpen?: bool
         localStorage.removeItem('temp_uid');
         const user = await getUser();
         if (user) setUser(user);
-        await fetchAll();
       } else {
         createTempUid();
       }
+      await fetchAll();
       setAuthenticated(response);
       setLoading(false);
     }

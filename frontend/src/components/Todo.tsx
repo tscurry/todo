@@ -150,7 +150,7 @@ const Todo = () => {
       </div>
 
       <div className="mt-10 pb-5">
-        {selectedListTodos.length > 0 || todos.length > 0 ? (
+        {selectedListTodos.length > 0 || renderTodos.length > 0 ? (
           <AnimatePresence>
             {renderTodos
               .filter((todo_) =>

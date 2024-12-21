@@ -324,8 +324,8 @@ export const AuthOverlay = (props: { close: () => void }) => {
         setUserError(false);
         setUser(response.username);
         setAuthenticated(true);
-        setLoading(false);
 
+        setLoading(false);
         props.close();
       }
     } else {
