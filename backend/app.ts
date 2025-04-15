@@ -24,6 +24,8 @@ app.use(
 );
 app.use(express.json());
 
+app.set('trust proxy', 2);
+
 app.use(
   session({
     name: 'session_id',
@@ -35,6 +37,7 @@ app.use(
     saveUninitialized: false,
     resave: false,
     secret: `${process.env.SESSION_SECRET}`,
+    proxy: true,
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
