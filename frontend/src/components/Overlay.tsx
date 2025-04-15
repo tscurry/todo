@@ -12,7 +12,7 @@ import { useTodo } from '../context/TodoContext';
 import { useList } from '../context/ListContext';
 import Lists from './Lists';
 import { getTodos, getTotalCount, postTodo, updateTodo } from '../api/todo';
-import { createUser, loginUser } from '../api/auth';
+import { checkAuthStatus, createUser, getUser, loginUser } from '../api/auth';
 import { getListTodos, getUserLists, postNewList } from '../api/list';
 
 // add animations at the end
@@ -101,11 +101,11 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
           });
 
           if (post) {
-            props.close();
             setSelectedList(-1);
             await getTotal();
             await getUserTodos();
             await fetchLists();
+            props.close();
           }
         }
       } catch (error) {
@@ -311,23 +311,24 @@ export const AuthOverlay = (props: { close: () => void }) => {
     if (isLogin) {
       const response = await loginUser({ username, password });
 
-      if (response.userError) {
-        setPasswordError(false);
-        setUserError(true);
+      if (response.userError || response.passwordError) {
+        setUserError(!!response.userError);
+        setPasswordError(!!response.passwordError);
         setLoading(false);
-      } else if (response.passwordError) {
-        setUserError(false);
-        setPasswordError(true);
-        setLoading(false);
-      } else {
-        setPasswordError(false);
-        setUserError(false);
-        setUser(response.username);
-        setAuthenticated(true);
-
-        setLoading(false);
-        props.close();
+        return;
       }
+
+      const verified = await checkAuthStatus();
+
+      if (!verified) {
+        throw new Error('Session verification failed');
+      }
+
+      const currUser = await getUser();
+      setUser(currUser);
+      setAuthenticated(true);
+      setLoading(false);
+      props.close();
     } else {
       const response = await createUser({ username, password });
       if (response.accountCreated) {

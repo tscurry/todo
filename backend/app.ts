@@ -26,7 +26,7 @@ app.use(express.json());
 
 app.use(
   session({
-    name: 'user_session',
+    name: 'session_id',
     store: new pgSession({
       pool: pool,
       tableName: 'sessions',
@@ -36,8 +36,9 @@ app.use(
     resave: false,
     secret: `${process.env.SESSION_SECRET}`,
     cookie: {
-      secure: process.env.NODE_ENV === 'production' ? true : false,
-      // maxAge: 30 * 24 * 60 * 60 * 1000,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     },
   }),
 );

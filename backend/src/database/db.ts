@@ -7,8 +7,12 @@ dotenv.config();
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false,
+    rejectUnauthorized: process.env.NODE_ENV === 'production',
   },
+  max: 20,
+  min: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
 });
 
 try {
@@ -20,20 +24,20 @@ try {
   process.exit(1);
 }
 
-// const testConnection = async () => {
-//   try {
-//     const res = await pool.query('SELECT NOW();');
-//     console.log('Database connected successfully:', res.rows[0]);
-//   } catch (err) {
-//     console.error('Database connection failed:', err);
-//   }
-// };
+const testConnection = async () => {
+  try {
+    const res = await pool.query('SELECT NOW();');
+    console.log('Database connected successfully:', res.rows[0]);
+  } catch (err) {
+    console.error('Database connection failed:', err);
+  }
+};
 
-// testConnection();
+testConnection();
 
 export const cronSchedule = cron.schedule('0 */1 * * *', async () => {
   try {
-    await pool.query('DELETE FROM sessions WHERE expire < NOW();');
+    await pool.query(`DELETE FROM sessions WHERE expire < (NOW() - INTERVAL '1 hour'`);
     console.log('Expired sessions cleared');
   } catch (err) {
     console.error('Error clearing expired sessions', err);

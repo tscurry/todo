@@ -8,8 +8,7 @@ import Lists from './Lists';
 import { useAuth } from '../context/AuthContext';
 import { useList } from '../context/ListContext';
 import { useTodo } from '../context/TodoContext';
-import { checkAuthStatus, getUser, logoutUser } from '../api/auth';
-import { createTempUid } from '../utils/createTempUid';
+import { logoutUser } from '../api/auth';
 import { getTodos, getTotalCount } from '../api/todo';
 import { getListTodos, getUserLists } from '../api/list';
 
@@ -66,18 +65,7 @@ export const AuthHeader = (props: { isResponsive?: boolean; isSidebarOpen?: bool
   const auth = async () => {
     if (!props.isSidebarOpen) {
       setLoading(true);
-
-      const response = await checkAuthStatus();
-
-      if (response) {
-        localStorage.removeItem('temp_uid');
-        const user = await getUser();
-        if (user) setUser(user);
-      } else {
-        createTempUid();
-      }
       await fetchAll();
-      setAuthenticated(response);
       setLoading(false);
     }
   };

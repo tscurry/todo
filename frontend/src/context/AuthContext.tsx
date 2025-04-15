@@ -1,6 +1,8 @@
 /* eslint-disable no-unused-vars */
 import * as React from 'react';
 import { ContextProviderProps } from '../utils/types';
+import { checkAuthStatus, getUser } from '../api/auth';
+import { createTempUid } from '../utils/createTempUid';
 
 type AuthContextProps = {
   user: string | null;
@@ -29,6 +31,27 @@ const AuthProvider = ({ children }: ContextProviderProps) => {
     setSignupError(false);
     setUserError(false);
   };
+
+  React.useEffect(() => {
+    const verifyAuth = async () => {
+      try {
+        const authenticated = await checkAuthStatus();
+        if (authenticated) {
+          localStorage.removeItem('temp_uid');
+          const username = await getUser();
+          setUser(username);
+          setAuthenticated(true);
+        } else {
+          createTempUid();
+        }
+      } catch (error) {
+        setAuthenticated(false);
+        setUser(null);
+      }
+    };
+
+    verifyAuth();
+  }, []);
 
   return (
     <AuthContext.Provider
