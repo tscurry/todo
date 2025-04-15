@@ -12,7 +12,7 @@ import { useTodo } from '../context/TodoContext';
 import { useList } from '../context/ListContext';
 import Lists from './Lists';
 import { getTodos, getTotalCount, postTodo, updateTodo } from '../api/todo';
-import { checkAuthStatus, createUser, getUser, loginUser } from '../api/auth';
+import { createUser, getUser, loginUser } from '../api/auth';
 import { getListTodos, getUserLists, postNewList } from '../api/list';
 
 // add animations at the end
@@ -318,10 +318,8 @@ export const AuthOverlay = (props: { close: () => void }) => {
         return;
       }
 
-      const verified = await checkAuthStatus();
-
-      if (!verified) {
-        throw new Error('Session verification failed');
+      if (!response) {
+        throw new Error('There was an unexpected error while logging in');
       }
 
       const currUser = await getUser();
