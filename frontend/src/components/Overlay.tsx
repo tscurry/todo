@@ -12,7 +12,7 @@ import { useTodo } from '../context/TodoContext';
 import { useList } from '../context/ListContext';
 import Lists from './Lists';
 import { getTodos, getTotalCount, postTodo, updateTodo } from '../api/todo';
-import { createUser, getUser, loginUser } from '../api/auth';
+import { createUser, loginUser } from '../api/auth';
 import { getListTodos, getUserLists, postNewList } from '../api/list';
 
 // add animations at the end
@@ -318,15 +318,14 @@ export const AuthOverlay = (props: { close: () => void }) => {
         return;
       }
 
-      if (!response) {
+      if (response.message) {
+        setUser(response.username);
+        setAuthenticated(true);
+        setLoading(false);
+        props.close();
+      } else {
         throw new Error('There was an unexpected error while logging in');
       }
-
-      const currUser = await getUser();
-      setUser(currUser);
-      setAuthenticated(true);
-      setLoading(false);
-      props.close();
     } else {
       const response = await createUser({ username, password });
       if (response.accountCreated) {
