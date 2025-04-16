@@ -1,12 +1,14 @@
 /* eslint-disable no-unused-vars */
 import * as React from 'react';
 import { ContextProviderProps, Todos } from '../utils/types';
+import { getTodos, getTotalCount } from '../api/todo';
 
 type TodoContextProps = {
   todoUpdated: boolean;
   todos: Todos[];
   renderTodos: Todos[];
   totalTodos: number;
+  fetchAllTodos: () => Promise<void>;
   setTodos: (todos: Todos[]) => void;
   setRenderTodos: (todos: Todos[]) => void;
   setTotalTodos: (totalTodos: number) => void;
@@ -21,6 +23,14 @@ const TodoProvider = ({ children }: ContextProviderProps) => {
   const [todoUpdated, setTodoUpdated] = React.useState(false);
   const [renderTodos, setRenderTodos] = React.useState<Todos[]>([]);
 
+  const fetchAllTodos = async () => {
+    const allTodos = await getTodos();
+    if (allTodos) setTodos(allTodos.todos || allTodos);
+
+    const total = await getTotalCount();
+    setTotalTodos(total.count);
+  };
+
   return (
     <TodoContext.Provider
       value={{
@@ -32,6 +42,7 @@ const TodoProvider = ({ children }: ContextProviderProps) => {
         setTotalTodos,
         setRenderTodos,
         setUpdate: setTodoUpdated,
+        fetchAllTodos,
       }}
     >
       {children}

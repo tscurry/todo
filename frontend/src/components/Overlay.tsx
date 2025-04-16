@@ -289,13 +289,14 @@ export const AuthOverlay = (props: { close: () => void }) => {
     userError,
     passwordError,
     signupError,
-    setAuthenticated,
     setSignupError,
-    setUser,
     resetErrors,
     setPasswordError,
     setUserError,
+    authenticateUser,
   } = useAuth();
+  const { getCompletedCount, getLists } = useList();
+  const { fetchAllTodos } = useTodo();
   const { setLoading } = useLoading();
 
   const resetVariables = () => {
@@ -319,8 +320,12 @@ export const AuthOverlay = (props: { close: () => void }) => {
       }
 
       if (response.message) {
-        setUser(response.username);
-        setAuthenticated(true);
+        // handle in context, basically fetch everything, just call the context function
+        authenticateUser(response.username);
+
+        await fetchAllTodos();
+        await getLists();
+        await getCompletedCount();
         setLoading(false);
         props.close();
       } else {

@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import * as React from 'react';
 import { ContextProviderProps } from '../utils/types';
-import { checkAuthStatus, getUser } from '../api/auth';
+import { getUser } from '../api/auth';
 import { createTempUid } from '../utils/createTempUid';
 
 type AuthContextProps = {
@@ -10,6 +10,7 @@ type AuthContextProps = {
   passwordError: boolean;
   signupError: boolean;
   isAuthenticated: boolean;
+  authenticateUser: (user: string) => void;
   setUser: (user: string | null) => void;
   setSignupError: (signupError: boolean) => void;
   setUserError: (userError: boolean) => void;
@@ -32,20 +33,21 @@ const AuthProvider = ({ children }: ContextProviderProps) => {
     setUserError(false);
   };
 
+  const authenticateUser = (user: string) => {
+    setUser(user);
+    setAuthenticated(true);
+  };
+
   React.useEffect(() => {
     const verifyAuth = async () => {
-      try {
-        const authenticated = await checkAuthStatus();
-        if (authenticated) {
-          localStorage.removeItem('temp_uid');
-          const username = await getUser();
-          setUser(username);
-          setAuthenticated(true);
-        } else {
-          createTempUid();
-        }
-      } catch (error) {
+      const username = await getUser();
+      if (username) {
+        setUser(username);
+        setAuthenticated(true);
+        localStorage.removeItem('temp_uid');
+      } else {
         setAuthenticated(false);
+        createTempUid();
         setUser(null);
       }
     };
@@ -61,6 +63,7 @@ const AuthProvider = ({ children }: ContextProviderProps) => {
         isAuthenticated,
         userError,
         passwordError,
+        authenticateUser,
         setUser,
         setSignupError,
         setAuthenticated,

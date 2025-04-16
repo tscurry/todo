@@ -2,6 +2,7 @@
 import * as React from 'react';
 import { ContextProviderProps, ListItems, Todos } from '../utils/types';
 import { getCompleted } from '../api/todo';
+import { getUserLists } from '../api/list';
 
 type ListContextProps = {
   lists: ListItems[];
@@ -9,6 +10,7 @@ type ListContextProps = {
   completedCount: number;
   totalCount: number;
   selectedList: number;
+  getLists: () => Promise<void>;
   setSelectedList: (selectedList: number) => void;
   setTotalCount: (count: number) => void;
   setListTodos: (todos: Todos[]) => void;
@@ -33,6 +35,11 @@ const ListProvider = ({ children }: ContextProviderProps) => {
     if (selected) return complete.completedTodos;
   };
 
+  const getLists = async () => {
+    const list = await getUserLists();
+    list ? setLists(list) : setLists([]);
+  };
+
   React.useEffect(() => {
     setSelectedList(-1);
   }, []);
@@ -46,6 +53,7 @@ const ListProvider = ({ children }: ContextProviderProps) => {
         selectedList,
         totalCount,
         setSelectedList,
+        getLists,
         setTotalCount,
         setListTodos: setSelectedListTodos,
         setLists,

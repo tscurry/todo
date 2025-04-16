@@ -9,8 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useList } from '../context/ListContext';
 import { useTodo } from '../context/TodoContext';
 import { logoutUser } from '../api/auth';
-import { getTodos, getTotalCount } from '../api/todo';
-import { getListTodos, getUserLists } from '../api/list';
+import { getListTodos } from '../api/list';
 
 export const AuthHeader = (props: { isResponsive?: boolean; isSidebarOpen?: boolean }) => {
   const [isOverlayOpen, setIsOverlayOpen] = React.useState(false);
@@ -20,7 +19,7 @@ export const AuthHeader = (props: { isResponsive?: boolean; isSidebarOpen?: bool
 
   const { isAuthenticated, user, resetErrors, setUser, setAuthenticated } = useAuth();
   const { setTodos, setTotalTodos } = useTodo();
-  const { setSelectedList, setListTodos, setLists, getCompletedCount } = useList();
+  const { setListTodos, setLists, getCompletedCount } = useList();
   const { setLoading } = useLoading();
 
   handleOutsideClick(headerRef, () => setIsOverlayOpen(false));
@@ -45,34 +44,6 @@ export const AuthHeader = (props: { isResponsive?: boolean; isSidebarOpen?: bool
       setLoading(false);
     }
   };
-
-  const fetchAll = async () => {
-    setSelectedList(-1);
-    setListTodos([]);
-
-    await getCompletedCount();
-
-    const allTodos = await getTodos();
-    if (allTodos) setTodos(allTodos.todos || allTodos);
-
-    const list = await getUserLists();
-    list ? setLists(list) : setLists([]);
-
-    const total = await getTotalCount();
-    if (total) setTotalTodos(total.count);
-  };
-
-  const auth = async () => {
-    if (!props.isSidebarOpen) {
-      setLoading(true);
-      await fetchAll();
-      setLoading(false);
-    }
-  };
-
-  React.useEffect(() => {
-    auth();
-  }, [isAuthenticated]);
 
   return (
     <>
@@ -174,23 +145,13 @@ const Header = () => {
   const overlayRef = React.useRef<HTMLDivElement>(null);
   const headerRef = React.useRef<HTMLDivElement>(null);
 
-  const { setTotalTodos, setTodos, totalTodos } = useTodo();
+  const { fetchAllTodos, setTodos, totalTodos } = useTodo();
   const { setListTodos, setSelectedList, getCompletedCount, selectedList, lists, completedCount } =
     useList();
 
   handleOutsideClick(headerRef, () => setIsOpen(false));
 
   const { isAuthenticated } = useAuth();
-
-  const userTodos = async () => {
-    const todos = await getTodos();
-    if (todos) setTodos(todos);
-  };
-
-  const getTotal = async () => {
-    const total = await getTotalCount();
-    if (total) setTotalTodos(total.count);
-  };
 
   // when list item is selected
   const handleListSelect = async (item: number) => {
@@ -219,8 +180,7 @@ const Header = () => {
     setIsOpen(false);
     setSelectedList(-1);
     setListTodos([]);
-    await userTodos();
-    await getTotal();
+    await fetchAllTodos();
   };
 
   return (

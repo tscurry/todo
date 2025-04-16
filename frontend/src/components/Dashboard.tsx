@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { CreateNewList } from './Buttons';
 import { useAuth } from '../context/AuthContext';
 import { useList } from '../context/ListContext';
@@ -5,12 +6,21 @@ import { useTodo } from '../context/TodoContext';
 import { getTodos } from '../api/todo';
 import { getListTodos } from '../api/list';
 import Lists from './Lists';
+import { useLoading } from '../context/LoadingContext';
 
 const Dashboard = () => {
-  const { setTodos, totalTodos } = useTodo();
+  const { setTodos, totalTodos, fetchAllTodos } = useTodo();
   const { isAuthenticated } = useAuth();
-  const { getCompletedCount, setListTodos, setSelectedList, selectedList, lists, completedCount } =
-    useList();
+  const {
+    getCompletedCount,
+    getLists,
+    setListTodos,
+    setSelectedList,
+    selectedList,
+    lists,
+    completedCount,
+  } = useList();
+  const { setLoading } = useLoading();
 
   const userTodos = async () => {
     const todos = await getTodos();
@@ -42,6 +52,18 @@ const Dashboard = () => {
       setListTodos(todos);
     }
   };
+
+  React.useEffect(() => {
+    setLoading(true);
+    const checkAuth = async () => {
+      await getLists();
+      await getCompletedCount();
+      await fetchAllTodos();
+      setLoading(false);
+    };
+
+    checkAuth();
+  }, [isAuthenticated]);
 
   return (
     <div className="dashboard hidden lgmd:block bg-white shadow-sm">

@@ -12,7 +12,6 @@ import { useAuth } from '../context/AuthContext';
 import { useTodo } from '../context/TodoContext';
 import { useList } from '../context/ListContext';
 import { deleteTodo, getTodos, getTotalCount, markCompleted } from '../api/todo';
-import { getUserLists } from '../api/list';
 
 const Todo = () => {
   const [isChecked, setIsChecked] = React.useState(false);
@@ -23,7 +22,7 @@ const Todo = () => {
   const [selectedDate, setSelectedDate] = React.useState<Dayjs | null>(null);
 
   const { todos, setTotalTodos, setTodos, renderTodos, setRenderTodos } = useTodo();
-  const { getCompletedCount, setLists, setListTodos, selectedList, selectedListTodos } = useList();
+  const { getCompletedCount, setListTodos, selectedList, selectedListTodos, getLists } = useList();
   const { isAuthenticated, user } = useAuth();
 
   const overlayRef = React.useRef<HTMLDivElement>(null);
@@ -34,11 +33,6 @@ const Todo = () => {
 
   handleOutsideClick(overlayRef, () => setEditId(null));
   handleOutsideClick(calendarRef, () => setToggleCalendar(false));
-
-  const fetchLists = async () => {
-    const list = await getUserLists();
-    list ? setLists(list) : setLists([]);
-  };
 
   const userTodos = async () => {
     const fetchedTodos = await getTodos();
@@ -56,7 +50,7 @@ const Todo = () => {
 
     setTimeout(async () => {
       const mark = await markCompleted(todo_.todo_id);
-      await fetchLists();
+      await getLists();
       await getCompletedCount();
 
       if (mark) {
@@ -85,7 +79,7 @@ const Todo = () => {
     // reset values after line through animation
     setTimeout(async () => {
       const del = await deleteTodo(todo_.todo_id);
-      await fetchLists();
+      await getLists();
       await getCompletedCount();
       await getTotal();
 
