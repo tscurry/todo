@@ -2,9 +2,9 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import session from 'express-session';
-import connectSession from 'connect-pg-simple';
+// import connectSession from 'connect-pg-simple';
 
-import pool from './src/database/db';
+// import pool from './src/database/db';
 import listsRoute from './src//routes/lists';
 import todoRoute from './src/routes/todo';
 import authenticationRoute from './src/routes/authentication';
@@ -14,7 +14,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const app = express();
-const pgSession = connectSession(session);
+// const pgSession = connectSession(session);
 
 app.use(
   cors({
@@ -31,11 +31,11 @@ app.use(express.json());
 app.use(
   session({
     name: 'session_id',
-    store: new pgSession({
-      pool: pool,
-      tableName: 'sessions',
-      createTableIfMissing: true,
-    }),
+    // store: new pgSession({
+    //   pool: pool,
+    //   tableName: 'sessions',
+    //   createTableIfMissing: true,
+    // }),
     saveUninitialized: false,
     resave: false,
     secret: `${process.env.SESSION_SECRET}`,
