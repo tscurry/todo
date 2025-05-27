@@ -44,8 +44,9 @@ app.use(
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      domain: undefined,
+      // domain: undefined,
     },
+    proxy: true,
   }),
 );
 
