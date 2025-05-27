@@ -5,15 +5,13 @@ import { OverlayButtons } from './Buttons';
 import { DatePickerCalendar, TimePicker } from './index';
 import { ListItems, Todos } from '../utils/types';
 import dayjs, { Dayjs } from 'dayjs';
-import { useLoading } from '../context/LoadingContext';
 import { ClipLoader } from 'react-spinners';
-import { useAuth } from '../context/AuthContext';
-import { useTodo } from '../context/TodoContext';
-import { useList } from '../context/ListContext';
+import { useIsFetching, useIsMutating } from '@tanstack/react-query';
+import { useAuth } from '../hooks/useAuth';
+import { useLists } from '../hooks/useLists';
+import { useTodos } from '../hooks/useTodos';
 import Lists from './Lists';
-import { getTodos, getTotalCount, postTodo, updateTodo } from '../api/todo';
-import { createUser, loginUser } from '../api/auth';
-import { getListTodos, getUserLists, postNewList } from '../api/list';
+import { useListId } from '../context/ListContext';
 
 // add animations at the end
 
@@ -29,10 +27,10 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
   const [selectedDate, setSelectedDate] = React.useState<Dayjs | null>(null);
   const [selectedTime, setSelectedTime] = React.useState<Dayjs | null>(null);
 
-  const { lists, selectedList, setLists, setSelectedList } = useList();
-  const { todoUpdated, setTodos, setUpdate, setTotalTodos } = useTodo();
-  const { setLoading } = useLoading();
-  const { isAuthenticated } = useAuth();
+  const { selectedListId, setSelectedListId } = useListId();
+  const { lists, createList, refetchLists } = useLists();
+  const { updateTodo, addTodo } = useTodos(selectedListId);
+  const { user } = useAuth();
 
   const handleChange = (newDateTime: Dayjs | null, update?: string) => {
     if (update === 'date') setSelectedDate(newDateTime);
@@ -40,34 +38,21 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
     setIsEditing(false);
   };
 
-  const fetchLists = async () => {
-    const list = await getUserLists();
-    list ? setLists(list) : setLists([]);
-  };
-
-  const getTotal = async () => {
-    const total = await getTotalCount();
-    if (total) setTotalTodos(total.count);
-  };
-
-  const getUserTodos = async () => {
-    const todos = await getTodos();
-    if (todos) setTodos(todos);
-  };
-
   const handleCreateList = async (name: string) => {
-    const newList = await postNewList(name);
+    const newList = await createList.mutateAsync(name);
     if (newList) {
-      await fetchLists();
       setIsListInputVisible(false);
     }
+  };
+
+  const findSelectedList = () => {
+    const preselected = lists.filter((item: ListItems) => props.todo?.color === item.color);
+    setSelectedOverlayList(preselected[0]);
   };
 
   // make sure time is > current time
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setLoading(true);
-    setUpdate(true);
 
     if (selectedTime && selectedDate && todoTitle) {
       const combinedDate = selectedDate
@@ -77,42 +62,34 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
 
       try {
         if (props.todo) {
-          const update = await updateTodo(props.todo.todo_id, {
-            title: todoTitle,
-            due_date: combinedDate,
-            list_name: selectedOverlayList?.name,
+          const update = await updateTodo.mutateAsync({
+            id: props.todo.todo_id,
+            todo: {
+              title: todoTitle,
+              due_date: combinedDate,
+              list_name: selectedOverlayList?.name,
+            },
           });
 
           if (update) {
+            await refetchLists();
             props.close();
-            await fetchLists();
-
-            if (selectedList === -1) await getUserTodos();
-            else {
-              const updatedListTodos = await getListTodos(selectedList);
-              if (updatedListTodos) setTodos(updatedListTodos);
-            }
           }
         } else {
-          const post = await postTodo({
+          const post = await addTodo.mutateAsync({
             title: todoTitle,
             due_date: combinedDate,
             list_name: selectedOverlayList?.name,
           });
 
           if (post) {
-            setSelectedList(-1);
-            await getTotal();
-            await getUserTodos();
-            await fetchLists();
+            setSelectedListId(-1);
+            await refetchLists();
             props.close();
           }
         }
       } catch (error) {
         console.error(error);
-      } finally {
-        setLoading(false);
-        setUpdate(false);
       }
     }
   };
@@ -123,11 +100,10 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
       setSelectedDate(dayjs(props.todo.due_date));
       setSelectedTime(dayjs(props.todo.due_date));
     }
+    findSelectedList();
   }, [isEditing, props.todo]);
 
-  React.useEffect(() => {
-    fetchLists();
-  }, [todoUpdated]);
+  console.log(selectedOverlayList);
 
   return (
     <motion.form
@@ -140,7 +116,9 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
     >
       <div className="flex items-center bg-grey rounded-xl p-2.5">
         <div
-          style={{ borderColor: selectedOverlayList ? selectedOverlayList.color : '#b2b2b2' }}
+          style={{
+            borderColor: selectedOverlayList ? selectedOverlayList.color : '#b2b2b2',
+          }}
           className={`rounded-[7px] border-[2px] p-[10px] transition-all duration-400`}
         ></div>
         <input
@@ -175,7 +153,9 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
           onClick={() => setSelectedOption('list')}
         >
           <span
-            style={{ borderColor: selectedOverlayList ? selectedOverlayList.color : '#b2b2b2' }}
+            style={{
+              borderColor: selectedOverlayList ? selectedOverlayList.color : '#b2b2b2',
+            }}
             className={`rounded-[7px] border-[2px] p-2.5 transition-all duration-400`}
           />
           <p className="pl-3 pr-5 w-full">
@@ -199,13 +179,13 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
         className={`${selectedOption === 'list' ? 'max-h-[240px] xlsm:max-h-[290px]' : 'max-h-[300px]'} overflow-y-scroll my-4 transition-all duration-400 h-auto`}
       >
         {selectedOption === 'list' &&
-          lists.map((item) => (
+          lists.map((item: ListItems) => (
             <div key={item.list_id} onClick={() => setSelectedOverlayList(item)}>
               <Lists list={item} selectedList={selectedOverlayList?.list_id} />
             </div>
           ))}
       </div>
-      {isAuthenticated && isListInputVisible && selectedOption === 'list' && (
+      {user && isListInputVisible && selectedOption === 'list' && (
         <div className="flex items-center justify-between">
           <div className="bg-grey flex w-full rounded-lg p-2.5 border-[0.5px]">
             <div
@@ -229,7 +209,7 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
           </button>
         </div>
       )}
-      {!isAuthenticated && isListInputVisible && selectedOption === 'list' && (
+      {!user && isListInputVisible && selectedOption === 'list' && (
         <p className="text-red italic ml-2">You must have an account to create lists.</p>
       )}
       {selectedOption === 'list' && (
@@ -285,19 +265,7 @@ export const AuthOverlay = (props: { close: () => void }) => {
   const [passwordVerify, setPasswordVerify] = React.useState('');
   const [isLogin, setIsLogin] = React.useState(true);
 
-  const {
-    userError,
-    passwordError,
-    signupError,
-    setSignupError,
-    resetErrors,
-    setPasswordError,
-    setUserError,
-    authenticateUser,
-  } = useAuth();
-  const { getCompletedCount, getLists } = useList();
-  const { fetchAllTodos } = useTodo();
-  const { setLoading } = useLoading();
+  const auth = useAuth();
 
   const resetVariables = () => {
     setPassword('');
@@ -307,45 +275,34 @@ export const AuthOverlay = (props: { close: () => void }) => {
 
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setLoading(true);
 
     if (isLogin) {
-      const response = await loginUser({ username, password });
+      const response = await auth.login.mutateAsync({ username, password });
 
       if (response.userError || response.passwordError) {
-        setUserError(!!response.userError);
-        setPasswordError(!!response.passwordError);
-        setLoading(false);
+        auth.errorSetters.setUserError(!!response.userError);
+        auth.errorSetters.setPasswordError(!!response.passwordError);
         return;
       }
 
       if (response.message) {
-        // handle in context, basically fetch everything, just call the context function
-        authenticateUser(response.username);
-
-        await fetchAllTodos();
-        await getLists();
-        await getCompletedCount();
-        setLoading(false);
         props.close();
       } else {
         throw new Error('There was an unexpected error while logging in');
       }
     } else {
-      const response = await createUser({ username, password });
+      const response = await auth.signup.mutateAsync({ username, password });
       if (response.accountCreated) {
         setIsLogin(true);
-        setLoading(false);
       } else if (response.error) {
-        setSignupError(true);
-        setLoading(false);
+        auth.errorSetters.setSignupError(true);
       }
     }
   };
 
   // reset variables when changing view
   React.useEffect(() => {
-    resetErrors();
+    auth.errorSetters.resetErrors();
     resetVariables();
   }, [isLogin]);
 
@@ -362,12 +319,14 @@ export const AuthOverlay = (props: { close: () => void }) => {
             id="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className={`${userError ? 'border-red' : ''} block px-2.5 pb-2.5 pt-4 w-full text-sm rounded-lg border border-light-grey focus:outline-none peer`}
+            className={`${auth.errorFlags.userError ? 'border-red' : ''} block px-2.5 pb-2.5 pt-4 w-full text-sm rounded-lg border border-light-grey focus:outline-none peer`}
             placeholder=" "
             required
           />
           <label
-            className={`${userError ? 'text-red' : ''} absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-placeholder-shown:scale-90 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto start-1`}
+            className={`${
+              auth.errorFlags.userError ? 'text-red' : ''
+            } absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-placeholder-shown:scale-90 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto start-1`}
           >
             Username
           </label>
@@ -379,21 +338,21 @@ export const AuthOverlay = (props: { close: () => void }) => {
             id="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className={`${!isLogin && passwordVerify.length && passwordVerify !== password ? 'border-red' : ''} ${passwordError ? 'border-red' : ''} block px-2.5 pb-2.5 pt-4 w-full text-sm rounded-lg border border-light-grey focus:outline-none peer`}
+            className={`${!isLogin && passwordVerify.length && passwordVerify !== password ? 'border-red' : ''} ${auth.errorFlags.passwordError ? 'border-red' : ''} block px-2.5 pb-2.5 pt-4 w-full text-sm rounded-lg border border-light-grey focus:outline-none peer`}
             placeholder=" "
             required
           />
           <label
-            className={`${passwordError ? 'text-red' : ''} ${!isLogin && passwordVerify.length && passwordVerify !== password ? 'text-red' : ''} absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-placeholder-shown:scale-90 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto start-1`}
+            className={`${auth.errorFlags.passwordError ? 'text-red' : ''} ${!isLogin && passwordVerify.length && passwordVerify !== password ? 'text-red' : ''} absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-placeholder-shown:scale-90 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto start-1`}
           >
             Password
           </label>
         </div>
         {isLogin && (
           <p
-            className={`${userError || passwordError ? 'block' : 'hidden'} p-1 text-red text-[10px]`}
+            className={`${auth.errorFlags.userError || auth.errorFlags.passwordError ? 'block' : 'hidden'} p-1 text-red text-[10px]`}
           >
-            {passwordError
+            {auth.errorFlags.passwordError
               ? 'Password is incorrect. Please try again'
               : 'User does not exist. Please create an account to continue'}
           </p>
@@ -420,7 +379,9 @@ export const AuthOverlay = (props: { close: () => void }) => {
                 <p className="p-1 text-[10px] text-red">Passwords do not match</p>
               ) : null}
             </div>
-            <p className={`${signupError ? 'block' : 'hidden'} text-red text-[10px] p-1`}>
+            <p
+              className={`${auth.errorFlags.signupError ? 'block' : 'hidden'} text-red text-[10px] p-1`}
+            >
               User already exists. Select the option below to log in
             </p>
           </>
@@ -457,23 +418,12 @@ export const AuthOverlay = (props: { close: () => void }) => {
 export const CreateListOverlay = (props: { close: () => void }) => {
   const [listTitle, setListTitle] = React.useState('');
 
-  const { setLists } = useList();
-  const { setLoading } = useLoading();
+  const { createList } = useLists();
 
-  const fetchLists = async () => {
-    const list = await getUserLists();
-    list ? setLists(list) : setLists([]);
-  };
-
-  const createList = async (name: string) => {
-    setLoading(true);
-    const response = await postNewList(name);
+  const createNewList = async (name: string) => {
+    const response = await createList.mutateAsync(name);
     if (response) {
-      await fetchLists();
-      setLoading(false);
       props.close();
-    } else {
-      setLoading(false);
     }
   };
 
@@ -496,7 +446,7 @@ export const CreateListOverlay = (props: { close: () => void }) => {
             className="w-full bg-grey rounded-xl pl-3 focus:outline-none"
           />
         </div>
-        <div className="mb-2 mt-4" onClick={() => createList(listTitle)}>
+        <div className="mb-2 mt-4" onClick={() => createNewList(listTitle)}>
           <OverlayButtons
             buttonText="Create new list"
             color="#000"
@@ -510,7 +460,10 @@ export const CreateListOverlay = (props: { close: () => void }) => {
 };
 
 export const GlobalLoadingOverlay = () => {
-  const { isLoading } = useLoading();
+  const isFetching = useIsFetching();
+  const isMutating = useIsMutating();
+
+  const isLoading = isFetching > 0 || isMutating > 0;
 
   return isLoading ? (
     <div className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center z-[9999] bg-black bg-opacity-50">

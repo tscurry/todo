@@ -3,13 +3,12 @@ import { Forward, Menu, MenuClose } from './Icons';
 import { handleOutsideClick } from '../utils/useClickOutside';
 import { OverlayButtons } from './Buttons';
 import { AuthOverlay, CreateListOverlay } from './Overlay';
-import { useLoading } from '../context/LoadingContext';
+import { useAuth } from '../hooks/useAuth';
+import { useLists } from '../hooks/useLists';
 import Lists from './Lists';
-import { useAuth } from '../context/AuthContext';
-import { useList } from '../context/ListContext';
-import { useTodo } from '../context/TodoContext';
-import { logoutUser } from '../api/auth';
-import { getListTodos } from '../api/list';
+import { useTodos } from '../hooks/useTodos';
+import { ListItems } from '../utils/types';
+import { useListId } from '../context/ListContext';
 
 export const AuthHeader = (props: { isResponsive?: boolean; isSidebarOpen?: boolean }) => {
   const [isOverlayOpen, setIsOverlayOpen] = React.useState(false);
@@ -17,32 +16,13 @@ export const AuthHeader = (props: { isResponsive?: boolean; isSidebarOpen?: bool
 
   const headerRef = React.useRef<HTMLDivElement>(null);
 
-  const { isAuthenticated, user, resetErrors, setUser, setAuthenticated } = useAuth();
-  const { setTodos, setTotalTodos } = useTodo();
-  const { setListTodos, setLists, getCompletedCount } = useList();
-  const { setLoading } = useLoading();
+  const { user, logout, errorSetters } = useAuth();
 
   handleOutsideClick(headerRef, () => setIsOverlayOpen(false));
 
-  const handleLogut = async () => {
-    setLoading(true);
-
-    const response = await logoutUser();
-    if (response) {
-      await getCompletedCount();
-
-      setUser(null);
-      setLists([]);
-      setTodos([]);
-      setListTodos([]);
-      setTotalTodos(0);
-      setAuthenticated(false);
-      setIsOverlayOpen(false);
-      setLoading(false);
-    } else {
-      setAuthenticated(true);
-      setLoading(false);
-    }
+  const handleLogut = () => {
+    logout.mutate();
+    // setIsOverlayOpen(false);
   };
 
   return (
@@ -53,13 +33,13 @@ export const AuthHeader = (props: { isResponsive?: boolean; isSidebarOpen?: bool
         <div
           className={`${!props.isResponsive ? 'w-[85%] justify-end' : ''} mx-auto bg-white flex items-center`}
         >
-          {!isAuthenticated ? (
+          {!user ? (
             <div className={`${props.isResponsive ? 'bg-grey' : ''} group`}>
               <button
                 className={`${props.isResponsive ? 'bg-white' : 'bg-grey'} group py-2 px-5 bg-grey rounded-lg group-hover:bg-black transition-all duration-400`}
                 onClick={() => {
                   setIsOverlayOpen(!isOverlayOpen);
-                  resetErrors();
+                  errorSetters.resetErrors();
                 }}
               >
                 <p className="group-hover:text-white text-sm">Login/Signup</p>
@@ -145,43 +125,30 @@ const Header = () => {
   const overlayRef = React.useRef<HTMLDivElement>(null);
   const headerRef = React.useRef<HTMLDivElement>(null);
 
-  const { fetchAllTodos, setTodos, totalTodos } = useTodo();
-  const { setListTodos, setSelectedList, getCompletedCount, selectedList, lists, completedCount } =
-    useList();
+  const { selectedListId, setSelectedListId } = useListId();
+  const { lists } = useLists();
+  const { total, completedTotal } = useTodos(selectedListId);
+  const { user } = useAuth();
 
   handleOutsideClick(headerRef, () => setIsOpen(false));
 
-  const { isAuthenticated } = useAuth();
-
-  // when list item is selected
-  const handleListSelect = async (item: number) => {
+  const getCompleted = () => {
+    setSelectedListId(0);
     setIsOpen(false);
-    setSelectedList(item);
-
-    const todos = await getListTodos(item);
-    if (todos) {
-      setTodos([]);
-      setListTodos(todos);
-    }
   };
 
-  const handleSelectListComplete = async () => {
+  const getAllTodos = () => {
+    setSelectedListId(-1);
     setIsOpen(false);
-    setSelectedList(0);
-    const todos = await getCompletedCount(true);
-
-    if (todos) {
-      setTodos([]);
-      setListTodos(todos);
-    }
   };
 
-  const getAllTodos = async () => {
+  const getListTodos = (id: number) => {
+    setSelectedListId(id);
     setIsOpen(false);
-    setSelectedList(-1);
-    setListTodos([]);
-    await fetchAllTodos();
   };
+  React.useEffect(() => {
+    setSelectedListId(-1);
+  }, []);
 
   return (
     <div className="lgmd:hidden header header-shadow flex items-center w-full h-[90%] transition-all relative">
@@ -213,7 +180,7 @@ const Header = () => {
             </div>
             <div className="max-h-[400px] h-auto my-5 overflow-y-scroll">
               <div
-                className={`${selectedList === -1 ? 'bg-grey' : ''} transition-all duration-300 flex justify-between items-center p-2 xlmd:p-3 rounded-lg cursor-pointer mb-[8px] xlmd:mb-[6px]`}
+                className={`${selectedListId === -1 ? 'bg-grey' : ''} transition-all duration-300 flex justify-between items-center p-2 xlmd:p-3 rounded-lg cursor-pointer mb-[8px] xlmd:mb-[6px]`}
                 onClick={getAllTodos}
               >
                 <div className="items-center flex">
@@ -222,21 +189,21 @@ const Header = () => {
                 </div>
 
                 <p
-                  className={`${selectedList === -1 ? 'bg-white' : 'bg-grey'} transition-all duration-300 p-1 rounded-lg text-center text-sm w-9`}
+                  className={`${selectedListId === -1 ? 'bg-white' : 'bg-grey'} transition-all duration-300 p-1 rounded-lg text-center text-sm w-9`}
                 >
-                  {totalTodos}
+                  {total}
                 </p>
               </div>
               {isListOpen &&
-                isAuthenticated &&
-                lists.map((item) => (
-                  <div key={item.list_id} onClick={() => handleListSelect(item.list_id)}>
-                    <Lists list={item} selectedList={selectedList} />
+                user &&
+                lists.map((item: ListItems) => (
+                  <div key={item.list_id} onClick={() => getListTodos(item.list_id)}>
+                    <Lists list={item} selectedList={selectedListId} />
                   </div>
                 ))}
               <div
-                className={`${selectedList === 0 ? 'bg-grey' : ''} transition-all duration-300 flex justify-between items-center p-2 xlmd:p-3 rounded-lg cursor-pointer mb-[8px] xlmd:mb-[6px]`}
-                onClick={handleSelectListComplete}
+                className={`${selectedListId === 0 ? 'bg-grey' : ''} transition-all duration-300 flex justify-between items-center p-2 xlmd:p-3 rounded-lg cursor-pointer mb-[8px] xlmd:mb-[6px]`}
+                onClick={getCompleted}
               >
                 <div className="items-center flex">
                   <div className={`rounded-[7px] border-[2px] p-[10px] border-[#000]`}></div>
@@ -244,18 +211,16 @@ const Header = () => {
                 </div>
 
                 <p
-                  className={`${selectedList === 0 ? 'bg-white' : 'bg-grey'} transition-all duration-300 p-1 rounded-lg text-center text-sm w-9`}
+                  className={`${selectedListId === 0 ? 'bg-white' : 'bg-grey'} transition-all duration-300 p-1 rounded-lg text-center text-sm w-9`}
                 >
-                  {completedCount}
+                  {completedTotal}
                 </p>
               </div>
             </div>
             <OverlayButtons
               onClick={() => {
                 setIsOpen(false);
-                isAuthenticated
-                  ? setIsOverlayOpen(!isOverlayOpen)
-                  : setIsAuthOverlayOpen(!isAuthOverlayOpen);
+                user ? setIsOverlayOpen(!isOverlayOpen) : setIsAuthOverlayOpen(!isAuthOverlayOpen);
               }}
               buttonText="Create a new list"
               color="#000"

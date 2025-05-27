@@ -8,10 +8,10 @@ import { Todos } from '../utils/types';
 import dayjs, { Dayjs } from 'dayjs';
 import DatePickerCalendar from './DatePicker';
 import Overlay from './Overlay';
-import { useAuth } from '../context/AuthContext';
-import { useTodo } from '../context/TodoContext';
-import { useList } from '../context/ListContext';
-import { deleteTodo, getTodos, getTotalCount, markCompleted } from '../api/todo';
+import { useTodos } from '../hooks/useTodos';
+import { useLists } from '../hooks/useLists';
+import { useAuth } from '../hooks/useAuth';
+import { useListId } from '../context/ListContext';
 
 const Todo = () => {
   const [isChecked, setIsChecked] = React.useState(false);
@@ -21,9 +21,10 @@ const Todo = () => {
   const [selectedTodo, setSelectedTodo] = React.useState<Todos>();
   const [selectedDate, setSelectedDate] = React.useState<Dayjs | null>(null);
 
-  const { todos, setTotalTodos, setTodos, renderTodos, setRenderTodos } = useTodo();
-  const { getCompletedCount, setListTodos, selectedList, selectedListTodos, getLists } = useList();
-  const { isAuthenticated, user } = useAuth();
+  const { refetchLists } = useLists();
+  const { selectedListId } = useListId();
+  const { todos, deleteTodo, markTodoComplete } = useTodos(selectedListId);
+  const { user } = useAuth();
 
   const overlayRef = React.useRef<HTMLDivElement>(null);
   const calendarRef = React.useRef<HTMLDivElement>(null);
@@ -34,27 +35,16 @@ const Todo = () => {
   handleOutsideClick(overlayRef, () => setEditId(null));
   handleOutsideClick(calendarRef, () => setToggleCalendar(false));
 
-  const userTodos = async () => {
-    const fetchedTodos = await getTodos();
-    if (fetchedTodos) setTodos(fetchedTodos.todos || fetchedTodos);
-  };
-
-  const getTotal = async () => {
-    const total = await getTotalCount();
-    if (total) setTotalTodos(total.count);
-  };
-
   const handleComplete = async (todo_: Todos) => {
     setSelectedTodo(todo_);
     setIsChecked(true);
 
     setTimeout(async () => {
-      const mark = await markCompleted(todo_.todo_id);
-      await getLists();
-      await getCompletedCount();
+      const mark = await markTodoComplete.mutateAsync(todo_.todo_id);
+      await refetchLists();
 
       if (mark) {
-        setRenderTodos(renderTodos.filter((todo) => todo.todo_id !== todo_.todo_id));
+        todos.filter((todo: Todos) => todo.todo_id !== todo_.todo_id);
         setIsChecked(false);
       }
     }, 900);
@@ -78,41 +68,22 @@ const Todo = () => {
 
     // reset values after line through animation
     setTimeout(async () => {
-      const del = await deleteTodo(todo_.todo_id);
-      await getLists();
-      await getCompletedCount();
-      await getTotal();
-
-      if (selectedList === 0) {
-        const todos = await getCompletedCount(true);
-
-        if (todos) {
-          setTodos([]);
-          setListTodos(todos);
-        }
-      }
+      const del = await deleteTodo.mutateAsync(todo_.todo_id);
+      await refetchLists();
 
       if (del) {
-        setRenderTodos(renderTodos.filter((todo) => todo.todo_id !== todo_.todo_id));
+        todos.filter((todo: Todos) => todo.todo_id !== todo_.todo_id);
         setIsChecked(false);
       }
     }, 900);
   };
-
-  React.useEffect(() => {
-    if (selectedDate === null) userTodos();
-  }, [selectedDate]);
-
-  React.useEffect(() => {
-    todos.length > 0 ? setRenderTodos(todos) : setRenderTodos(selectedListTodos);
-  }, [todos, selectedListTodos]);
 
   return (
     <div className="content mb-1 overflow-y-scroll pt-10 lgmd:pt-0">
       <div className="lgmd:mt-14 w-[90%] lg:w-[80%] mx-auto flex items-center justify-between">
         <div>
           <h1 className="font-semibold text-xl xlsm:text-2xl">
-            {isAuthenticated && user ? customGreeting(user) : customGreeting()}
+            {user ? customGreeting(user) : customGreeting()}
           </h1>
           <p className="xlsm:text-lg text-[grey] mt-1 font-light">
             {formattedDate === today ? `Today, ${formattedDate}` : formattedDate}
@@ -144,15 +115,19 @@ const Todo = () => {
       </div>
 
       <div className="mt-10 pb-5">
-        {selectedListTodos.length > 0 || renderTodos.length > 0 ? (
+        {todos.filter((todo_: Todos) =>
+          selectedDate !== null
+            ? dayjs(todo_.due_date).format('ddd DD MMM YYYY') === formattedDate
+            : todo_,
+        ).length > 0 ? (
           <AnimatePresence>
-            {renderTodos
-              .filter((todo_) =>
+            {todos
+              .filter((todo_: Todos) =>
                 selectedDate !== null
                   ? dayjs(todo_.due_date).format('ddd DD MMM YYYY') === formattedDate
                   : todo_,
               )
-              .map((todo) => (
+              .map((todo: Todos) => (
                 <motion.div
                   key={todo.todo_id}
                   initial={{ opacity: 0 }}
@@ -259,7 +234,11 @@ const Todo = () => {
           </AnimatePresence>
         ) : (
           <div className="w-[90%] lg:w-[80%] flex items-center mx-auto mt-14">
-            <p className="italic">No todos to display. Click create to get started</p>
+            <p className="italic">
+              {selectedDate
+                ? `No todos found for ${formattedDate}`
+                : 'No todos to display. Click create to get started'}
+            </p>
           </div>
         )}
       </div>

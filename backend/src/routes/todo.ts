@@ -21,7 +21,7 @@ router.get('/total', async (req, res) => {
       count = await pool.query('SELECT COUNT(*) FROM todos WHERE temp_uid = $1', [temp_uid]);
     }
 
-    res.status(200).json({ count: count.rows[0] });
+    res.status(200).json(count.rows[0]);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'error getting total count' });

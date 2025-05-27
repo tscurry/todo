@@ -23,7 +23,7 @@ export const getUser = async () => {
       credentials: 'include',
     });
     const data = await respnse.json();
-    return data.username;
+    return data?.username || null;
   } catch (error) {
     // console.error(error);
     throw new Error('There was an unexpected error. Please refresh page to continue');

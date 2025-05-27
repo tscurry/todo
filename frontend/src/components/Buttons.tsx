@@ -3,7 +3,7 @@ import { CreateIcon } from './Icons';
 import Overlay, { AuthOverlay, CreateListOverlay } from './Overlay';
 import { handleOutsideClick } from '../utils/useClickOutside';
 import { ButtonProps } from '../utils/types';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 export const DotsDropdown = (props: {
   delete: () => void;
@@ -35,7 +35,7 @@ export const NewTask = () => {
 
   return (
     <div className="w-[90%] lg:w-[80%] m-auto">
-      <div className="relative xsmd:w-[60%] w-full">
+      <div className="relative lgmd:w-[60%] w-full">
         <div
           className="z-[999] rounded-full py-3 px-4 bg-black cursor-pointer flex items-center"
           onClick={() => {
@@ -73,16 +73,14 @@ export const CreateNewList = () => {
   handleOutsideClick(authOverlayRef, () => setIsAuthOverlayOpen(false));
   handleOutsideClick(overlayRef, () => setIsOverlayOpen(false));
 
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
 
   return (
     <>
       <div
         className="flex rounded-full bg-grey shadow-light-grey p-4 items-center cursor-pointer transition-all"
         onClick={() => {
-          isAuthenticated
-            ? setIsOverlayOpen(!isOverlayOpen)
-            : setIsAuthOverlayOpen(!isAuthOverlayOpen);
+          user ? setIsOverlayOpen(!isOverlayOpen) : setIsAuthOverlayOpen(!isAuthOverlayOpen);
         }}
       >
         <p className="font-medium text-sm xlmd:text-[16px]">&#10133; &nbsp; Create new list</p>

@@ -40,8 +40,7 @@ export const getCompleted = async () => {
           credentials: 'include',
         },
       );
-      const data = await response.json();
-      return data;
+      return await response.json();
     } else {
       const reponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos/completed`, {
         method: 'GET',
@@ -68,7 +67,8 @@ export const getTodos = async () => {
         },
       );
 
-      return await response.json();
+      const data = await response.json();
+      return data.todos;
     } else {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos`, {
         method: 'GET',
