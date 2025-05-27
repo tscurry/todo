@@ -85,11 +85,11 @@ router.post('/login', async (req, res) => {
 
     if (!passwordsMatch) return res.status(401).json({ passwordError: 'incorrect password' });
 
-    if (typeof req.session.user_uid === 'undefined' || req.session.user_uid !== user.user_uid) {
-      req.session.user_uid = user.user_uid;
-    }
+    // if (typeof req.session.user_uid === 'undefined' || req.session.user_uid !== user.user_uid) {
+    //   req.session.user_uid = user.user_uid;
+    // }
 
-    // req.session.user_uid = user.user_uid;
+    req.session.user_uid = user.user_uid;
 
     req.session.save((err) => {
       if (err) {
