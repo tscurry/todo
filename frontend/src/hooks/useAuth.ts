@@ -18,13 +18,19 @@ export const useAuth = () => {
   };
 
   const verifyAuth = async () => {
-    const username = await authAPI.getUser();
-    if (username) {
-      localStorage.removeItem('temp_uid');
+    const status = await authAPI.checkAuthStatus();
+
+    if (status) {
+      const username = await authAPI.getUser();
+      if (username) {
+        localStorage.removeItem('temp_uid');
+      } else {
+        createTempUid();
+      }
+      return username;
     } else {
-      createTempUid();
+      return null;
     }
-    return username;
   };
 
   const {

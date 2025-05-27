@@ -103,8 +103,6 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
     findSelectedList();
   }, [isEditing, props.todo]);
 
-  console.log(selectedOverlayList);
-
   return (
     <motion.form
       method="post"

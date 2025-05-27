@@ -33,6 +33,10 @@ router.get('/user', async (req, res) => {
 
   try {
     user = await pool.query('SELECT * FROM users WHERE user_uid = $1;', [user_uid]);
+
+    if (user.rows.length === 0) {
+      return res.status(404).json({ error: 'user not found' });
+    }
     res.status(200).json({ username: user.rows[0].username });
   } catch (error) {
     res.status(500).json({ error: 'failure to get user' });
