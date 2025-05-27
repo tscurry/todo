@@ -85,23 +85,23 @@ router.post('/login', async (req, res) => {
 
     if (!passwordsMatch) return res.status(401).json({ passwordError: 'incorrect password' });
 
-    // if (typeof req.session.user_uid === 'undefined' || req.session.user_uid !== user.user_uid) {
-    //   req.session.user_uid = user.user_uid;
-    // }
+    if (typeof req.session.user_uid === 'undefined' || req.session.user_uid !== user.user_uid) {
+      req.session.user_uid = user.user_uid;
+    }
 
-    req.session.user_uid = user.user_uid;
+    // req.session.user_uid = user.user_uid;
 
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.status(500).json({ error: 'Session error' });
-      }
-      res.status(200).json({
-        message: 'successful login',
-        username: user.username,
-        id: user.user_uid,
-      });
-    });
+    // req.session.save((err) => {
+    //   if (err) {
+    //     console.error('Session save error:', err);
+    //     return res.status(500).json({ error: 'Session error' });
+    //   }
+    //   res.status(200).json({
+    //     message: 'successful login',
+    //     username: user.username,
+    //     id: user.user_uid,
+    //   });
+    // });
 
     res
       .status(200)
