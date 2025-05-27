@@ -20,9 +20,9 @@ app.use(
   cors({
     origin: process.env.CLIENT_URL,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['Set-Cookie'],
+    // methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    // allowedHeaders: ['Content-Type', 'Authorization'],
+    // exposedHeaders: ['Set-Cookie'],
   }),
 );
 
@@ -44,7 +44,6 @@ app.use(
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      domain: undefined,
     },
   }),
 );
