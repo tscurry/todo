@@ -37,10 +37,10 @@ testConnection();
 
 export const cronSchedule = cron.schedule('0 */1 * * *', async () => {
   try {
-    await pool.query(`DELETE FROM sessions WHERE expire < (NOW() - INTERVAL '1 hour')`);
-    console.log('Expired sessions cleared');
+    const result = await pool.query('DELETE FROM refresh_tokens WHERE expires_at < NOW()');
+    console.log(`Expired refresh tokens cleared: ${result.rowCount} tokens removed`);
   } catch (err) {
-    console.error('Error clearing expired sessions', err);
+    console.error('Error clearing expired refresh tokens:', err);
   }
 });
 

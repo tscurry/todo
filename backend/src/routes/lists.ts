@@ -3,13 +3,14 @@ import { QueryResult } from 'pg';
 import pool from '../database/db';
 import { colorGenerator } from '../utils/colorGenerator';
 import { Lists, Todos } from '../utils/types';
+import { authenticateToken } from '../middleware/token.middleware';
 
 const router = express.Router();
 
 let lists: QueryResult<Lists>;
 
-router.get('/', async (req, res) => {
-  const user_uid = req.session.user_uid;
+router.get('/', authenticateToken, async (req, res) => {
+  const { user_uid } = req.user;
 
   try {
     // get list names
@@ -25,9 +26,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const user_uid = req.session.user_uid;
+  const { user_uid } = req.user;
 
   let todos: QueryResult<Todos>;
 
@@ -46,9 +47,9 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   const { name } = req.body;
-  const user_uid = req.session.user_uid;
+  const { user_uid } = req.user;
   let color = colorGenerator();
 
   let list: QueryResult<Lists>;
@@ -82,11 +83,11 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { name } = req.body;
 
-  const user_uid = req.session.user_uid;
+  const { user_uid } = req.user;
 
   try {
     if (name) {

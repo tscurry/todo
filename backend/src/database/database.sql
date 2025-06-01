@@ -6,6 +6,15 @@ CREATE TABLE users (
   hashed_password VARCHAR(255)
 );
 
+CREATE TABLE refresh_tokens (
+  user_uid UUID PRIMARY KEY REFERENCES users(user_uid) ON CASCADE DELETE,
+  token VARCHAR(512) UNIQUE NOT NULL,
+  expires_at TIMESTAMP NOT NULL
+);
+
+CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
+CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
+
 CREATE TABLE user_lists (
   list_id SERIAL PRIMARY KEY,
   user_uid UUID NOT NULL,

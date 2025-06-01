@@ -1,3 +1,5 @@
+import { UUID } from 'crypto';
+
 export type Todos = {
   todo_id: number;
   temp_uid: string;
@@ -15,8 +17,9 @@ export type Lists = {
 
 export type User = {
   username: string;
+  user_uid?: UUID;
 };
 
-export type Count = {
-  count: number;
+export type CustomRequest = {
+  user?: User;
 };

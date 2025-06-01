@@ -4,40 +4,33 @@ import pool from '../database/db';
 import { v4 as uuidv4 } from 'uuid';
 import { QueryResult } from 'pg';
 import { User } from '../utils/types';
+import { authenticateRefreshToken, authenticateToken } from '../middleware/token.middleware';
+import {
+  generateRefreshToken,
+  generateToken,
+  refreshTokenCookieOptions,
+} from '../helpers/token.helper';
 
 const router = express.Router();
-
 const saltRounds = 10;
 
-// for testing
-router.get('/session', (req, res) => {
-  if (!req.session.user_uid) {
-    return res.status(401).json({ error: 'unauthorized' });
-  }
-
-  res.status(201).json({ user_uid: req.session.user_uid });
-});
-
-router.get('/status', (req, res) => {
-  if (req.session && req.session.user_uid) {
-    res.json({ isAuthenticated: true });
-  } else {
-    res.json({ isAuthenticated: false });
-  }
-});
-
-router.get('/user', async (req, res) => {
-  const user_uid = req.session.user_uid;
-
+router.get('/user', authenticateToken, async (req, res) => {
   let user: QueryResult<User>;
 
   try {
-    user = await pool.query('SELECT * FROM users WHERE user_uid = $1;', [user_uid]);
+    user = await pool.query('SELECT * FROM users WHERE user_uid = $1;', [req.user.user_uid]);
 
     if (user.rows.length === 0) {
       return res.status(404).json({ error: 'user not found' });
     }
-    res.status(200).json({ username: user.rows[0].username });
+
+    res.status(200).json({
+      isAuthenticated: true,
+      user: {
+        user_uid: user.rows[0].user_uid,
+        username: user.rows[0].username,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: 'failure to get user' });
   }
@@ -47,6 +40,8 @@ router.post('/signup', async (req, res) => {
   const { username, password, temp_uid } = req.body;
   const user_uid = uuidv4();
 
+  console.log(req.body);
+
   try {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
@@ -54,17 +49,36 @@ router.post('/signup', async (req, res) => {
 
     if (response.rows.length) return res.status(409).json({ error: 'user already exists' });
 
-    await pool.query(
-      'INSERT INTO users (user_uid, username, hashed_password) VALUES($1, $2, $3);',
+    const newUser = await pool.query(
+      'INSERT INTO users (user_uid, username, hashed_password) VALUES($1, $2, $3) RETURNING *;',
       [user_uid, username, hashedPassword],
     );
 
+    if (temp_uid) {
+      await pool.query(
+        'UPDATE todos SET user_uid = $1, temp_uid = NULL WHERE temp_uid = $2 RETURNING *;',
+        [user_uid, temp_uid],
+      );
+    }
+
+    const token = generateToken(newUser.rows[0]);
+    const refreshToken = generateRefreshToken(newUser.rows[0]);
+
     await pool.query(
-      'UPDATE todos SET user_uid = $1, temp_uid = NULL WHERE temp_uid = $2 RETURNING *;',
-      [user_uid, temp_uid],
+      'INSERT INTO refresh_tokens (user_uid, token, expires_at) VALUES ($1, $2, $3) ON CONFLICT (user_uid) DO UPDATE SET token = $2, expires at = $3;',
+      [user_uid, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)],
     );
 
-    res.status(201).json({ accountCreated: true });
+    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions);
+
+    res.status(201).json({
+      message: 'Account created successfully',
+      token,
+      user: {
+        user_uid: newUser.rows[0].user_uid,
+        username: newUser.rows[0].username,
+      },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'error signing up' });
@@ -85,39 +99,85 @@ router.post('/login', async (req, res) => {
 
     if (!passwordsMatch) return res.status(401).json({ passwordError: 'incorrect password' });
 
-    if (typeof req.session.user_uid === 'undefined' || req.session.user_uid !== user.user_uid) {
-      req.session.user_uid = user.user_uid;
-    }
+    const accessToken = generateToken(user);
+    const refreshToken = generateRefreshToken(user);
 
-    // req.session.user_uid = user.user_uid;
+    await pool.query(
+      'INSERT INTO refresh_tokens (user_uid, token, expires_at) VALUES ($1, $2, $3) ON CONFLICT (user_uid) DO UPDATE SET token = $2, expires at = $3;',
+      [user.user_uid, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)],
+    );
 
-    // req.session.save((err) => {
-    //   if (err) {
-    //     console.error('Session save error:', err);
-    //     return res.status(500).json({ error: 'Session error' });
-    //   }
-    //   res.status(200).json({
-    //     message: 'successful login',
-    //     username: user.username,
-    //     id: user.user_uid,
-    //   });
-    // });
+    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions);
 
-    res
-      .status(200)
-      .json({ message: 'successful login', username: user.username, id: user.user_uid });
+    res.status(200).json({
+      message: 'successful login',
+      accessToken,
+      username: user.username,
+      id: user.user_uid,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error trying to login' });
   }
 });
 
-router.post('/logout', async (req, res) => {
-  req.session.destroy((err) => {
-    if (err) return res.status(500).json({ error: 'error logging out' });
-    res.clearCookie('session_id');
-    res.status(200).json('logged out');
-  });
+router.post('/refresh', authenticateRefreshToken, async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    const userFromToken = req.user;
+
+    const storedToken = await pool.query(
+      'SELECT * FROM refresh_tokens WHERE user_uid = $1 AND token = $2 AND expires_at > NOW();',
+      [userFromToken.user_uid, refreshToken],
+    );
+
+    if (storedToken.rows.length === 0) {
+      await pool.query('DELETE FROM refresh_tokens WHERE user_uid = $1;', [userFromToken.user_uid]);
+      res.clearCookie('refreshToken', { path: '/auth' });
+
+      return res.status(403).json({ error: 'Invalid or expired refresh token' });
+    }
+
+    const user = await pool.query('SELECT * FROM users where user_uid = $1;', [
+      userFromToken.user_uid,
+    ]);
+
+    if (user.rows.length === 0) {
+      await pool.query('DELETE FROM refresh_tokens WHERE user_uid = $1;', [userFromToken.user_uid]);
+      res.clearCookie('refreshToken', { path: '/auth' });
+
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const newAccessToken = generateToken(user.rows[0]);
+    const newrefreshToken = generateRefreshToken(user.rows[0]);
+
+    await pool.query('UPDATE refresh_tokens SET token = $1, expires at = $2 WHERE user_uid = $3;', [
+      newrefreshToken,
+      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      user.rows[0].user_uid,
+    ]);
+
+    res.cookie('refreshToken', newrefreshToken, refreshTokenCookieOptions);
+
+    res.json({
+      accessToken: newAccessToken,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error refreshing token' });
+  }
+});
+
+router.post('/logout', authenticateRefreshToken, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM refresh_tokens WHERE user_uid = $1;', [req.user.user_uid]);
+    res.clearCookie('refreshToken', { path: '/auth' });
+    res.status(200).json({ message: 'logged out successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error during logout' });
+  }
 });
 
 export default router;
