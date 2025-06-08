@@ -2,23 +2,30 @@ import * as todosAPI from '../api/todo';
 import * as listAPI from '../api/list';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PostedTodos } from '../utils/types';
+import { useAuth } from '../context/AuthContext';
 
 export const useTodos = (listId: number) => {
   const queryClient = useQueryClient();
+  const { accessToken, isLoading: authLoading } = useAuth();
 
-  const getTodos = async () => {
+  const getTodos = async (accessToken: string | null) => {
     let todos;
+
+    if (accessToken) {
+      todos = await todosAPI.getTodos(accessToken);
+    }
 
     if (listId !== undefined && listId !== 0) {
       if (listId === -1) {
-        todos = await todosAPI.getTodos();
+        todos = await todosAPI.getTodos(accessToken);
       } else {
-        todos = await listAPI.getListTodos(listId);
+        todos = await listAPI.getListTodos(listId, accessToken);
       }
     }
 
-    const total = await todosAPI.getTotalCount();
-    const completed = await todosAPI.getCompleted();
+    const total = await todosAPI.getTotalCount(accessToken);
+    const completed = await todosAPI.getCompleted(accessToken);
+
     return { todos, total, completed };
   };
 
@@ -28,8 +35,10 @@ export const useTodos = (listId: number) => {
     error,
     refetch: refetchTodos,
   } = useQuery({
-    queryKey: ['todos', listId ?? 'all'],
-    queryFn: () => getTodos(),
+    queryKey: ['todos', listId ?? 'all', accessToken],
+    queryFn: () => getTodos(accessToken),
+    enabled: !authLoading,
+    staleTime: Infinity,
   });
 
   const todos = listId === 0 ? data?.completed?.completedTodos ?? [] : data?.todos ?? [];
@@ -37,7 +46,7 @@ export const useTodos = (listId: number) => {
   const completedTotal = data?.completed?.sum?.count ?? 0;
 
   const addTodo = useMutation({
-    mutationFn: (todo: PostedTodos) => todosAPI.postTodo(todo),
+    mutationFn: (todo: PostedTodos) => todosAPI.postTodo(todo, accessToken),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['todos'] }),
   });
 
@@ -48,7 +57,7 @@ export const useTodos = (listId: number) => {
 
   const updateTodo = useMutation({
     mutationFn: (data: { id: number; todo: PostedTodos }) =>
-      todosAPI.updateTodo(data.id, data.todo),
+      todosAPI.updateTodo(data.id, data.todo, accessToken),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['todos'] }),
   });
 

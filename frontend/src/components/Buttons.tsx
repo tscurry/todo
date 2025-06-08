@@ -3,7 +3,7 @@ import { CreateIcon } from './Icons';
 import Overlay, { AuthOverlay, CreateListOverlay } from './Overlay';
 import { handleOutsideClick } from '../utils/useClickOutside';
 import { ButtonProps } from '../utils/types';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 
 export const DotsDropdown = (props: {
   delete: () => void;

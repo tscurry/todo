@@ -7,11 +7,12 @@ import { ListItems, Todos } from '../utils/types';
 import dayjs, { Dayjs } from 'dayjs';
 import { ClipLoader } from 'react-spinners';
 import { useIsFetching, useIsMutating } from '@tanstack/react-query';
-import { useAuth } from '../hooks/useAuth';
 import { useLists } from '../hooks/useLists';
 import { useTodos } from '../hooks/useTodos';
 import Lists from './Lists';
 import { useListId } from '../context/ListContext';
+import { useAuth } from '../context/AuthContext';
+import { useAuthentication } from '../hooks/useAuth';
 
 // add animations at the end
 
@@ -46,8 +47,8 @@ const Overlay = (props: { todo?: Todos; close: () => void }) => {
   };
 
   const findSelectedList = () => {
-    const preselected = lists.filter((item: ListItems) => props.todo?.color === item.color);
-    setSelectedOverlayList(preselected[0]);
+    const preselected = lists?.filter((item: ListItems) => props.todo?.color === item.color);
+    preselected && setSelectedOverlayList(preselected[0]);
   };
 
   // make sure time is > current time
@@ -263,7 +264,8 @@ export const AuthOverlay = (props: { close: () => void }) => {
   const [passwordVerify, setPasswordVerify] = React.useState('');
   const [isLogin, setIsLogin] = React.useState(true);
 
-  const auth = useAuth();
+  const auth = useAuthentication();
+  const { setIsLoading } = useAuth();
 
   const resetVariables = () => {
     setPassword('');
@@ -273,6 +275,8 @@ export const AuthOverlay = (props: { close: () => void }) => {
 
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    setIsLoading(true);
 
     if (isLogin) {
       const response = await auth.login.mutateAsync({ username, password });
@@ -285,13 +289,17 @@ export const AuthOverlay = (props: { close: () => void }) => {
 
       if (response.message) {
         props.close();
+        setIsLoading(false);
       } else {
         throw new Error('There was an unexpected error while logging in');
       }
     } else {
       const response = await auth.signup.mutateAsync({ username, password });
-      if (response.accountCreated) {
-        setIsLogin(true);
+
+      if (response.message) {
+        await auth.login.mutateAsync({ username, password });
+        props.close();
+        setIsLoading(false);
       } else if (response.error) {
         auth.errorSetters.setSignupError(true);
       }

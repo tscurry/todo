@@ -2,7 +2,7 @@ import * as React from 'react';
 import { CreateNewList } from './Buttons';
 import Lists from './Lists';
 import { useLists } from '../hooks/useLists';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import { ListItems } from '../utils/types';
 import { useTodos } from '../hooks/useTodos';
 import { useListId } from '../context/ListContext';

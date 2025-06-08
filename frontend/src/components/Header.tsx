@@ -3,12 +3,13 @@ import { Forward, Menu, MenuClose } from './Icons';
 import { handleOutsideClick } from '../utils/useClickOutside';
 import { OverlayButtons } from './Buttons';
 import { AuthOverlay, CreateListOverlay } from './Overlay';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthentication } from '../hooks/useAuth';
 import { useLists } from '../hooks/useLists';
 import Lists from './Lists';
 import { useTodos } from '../hooks/useTodos';
 import { ListItems } from '../utils/types';
 import { useListId } from '../context/ListContext';
+import { useAuth } from '../context/AuthContext';
 
 export const AuthHeader = (props: { isResponsive?: boolean; isSidebarOpen?: boolean }) => {
   const [isOverlayOpen, setIsOverlayOpen] = React.useState(false);
@@ -16,7 +17,8 @@ export const AuthHeader = (props: { isResponsive?: boolean; isSidebarOpen?: bool
 
   const headerRef = React.useRef<HTMLDivElement>(null);
 
-  const { user, logout, errorSetters } = useAuth();
+  const { user } = useAuth();
+  const { logout, errorSetters } = useAuthentication();
 
   handleOutsideClick(headerRef, () => setIsOverlayOpen(false));
 
@@ -54,7 +56,7 @@ export const AuthHeader = (props: { isResponsive?: boolean; isSidebarOpen?: bool
                 <p
                   className={`${props.isResponsive ? 'mr-1' : 'mr-2'} sm:text-sm text-blue text-xs`}
                 >
-                  Signed in as: {user}
+                  Signed in as: {user.username}
                 </p>
                 {props.isResponsive && (
                   <Forward

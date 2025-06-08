@@ -1,6 +1,6 @@
 import { PostedTodos } from '../utils/types';
 
-export const getTotalCount = async () => {
+export const getTotalCount = async (token: string | null) => {
   const temp_uid = JSON.parse(localStorage.getItem('temp_uid')!) || '';
 
   try {
@@ -18,6 +18,9 @@ export const getTotalCount = async () => {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos/total`, {
         method: 'GET',
         credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
       const data = await response.json();
       return data.count;
@@ -28,7 +31,7 @@ export const getTotalCount = async () => {
 };
 
 //get completed todos
-export const getCompleted = async () => {
+export const getCompleted = async (token: string | null) => {
   const temp_uid = JSON.parse(localStorage.getItem('temp_uid')!) || '';
 
   try {
@@ -45,6 +48,9 @@ export const getCompleted = async () => {
       const reponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos/completed`, {
         method: 'GET',
         credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
       return await reponse.json();
     }
@@ -54,7 +60,7 @@ export const getCompleted = async () => {
 };
 
 // get todos
-export const getTodos = async () => {
+export const getTodos = async (token: string | null) => {
   const temp_uid = JSON.parse(localStorage.getItem('temp_uid')!) || '';
 
   try {
@@ -73,6 +79,9 @@ export const getTodos = async () => {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos`, {
         method: 'GET',
         credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
       const data = await response.json();
       return data.todos;
@@ -84,13 +93,13 @@ export const getTodos = async () => {
 };
 
 // create a todo
-export const postTodo = async (todoData: PostedTodos) => {
+export const postTodo = async (todoData: PostedTodos, token: string | null) => {
   const temp_uid = JSON.parse(localStorage.getItem('temp_uid')!) || '';
 
   try {
     const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         title: todoData.title,
         due_date: todoData.due_date,
@@ -110,11 +119,11 @@ export const postTodo = async (todoData: PostedTodos) => {
 };
 
 // update a todo
-export const updateTodo = async (todo_id: number, todoData: PostedTodos) => {
+export const updateTodo = async (todo_id: number, todoData: PostedTodos, token: string | null) => {
   try {
     const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/todos/${todo_id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         title: todoData.title,
         due_date: todoData.due_date,

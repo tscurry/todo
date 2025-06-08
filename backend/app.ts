@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 
 import listsRoute from './src/routes/lists';
 import todoRoute from './src/routes/todo';
@@ -11,6 +12,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const app = express();
+app.use(cookieParser());
 
 app.use(
   cors({

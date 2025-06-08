@@ -7,7 +7,7 @@ CREATE TABLE users (
 );
 
 CREATE TABLE refresh_tokens (
-  user_uid UUID PRIMARY KEY REFERENCES users(user_uid) ON CASCADE DELETE,
+  user_uid UUID PRIMARY KEY REFERENCES users(user_uid) ON DELETE CASCADE,
   token VARCHAR(512) UNIQUE NOT NULL,
   expires_at TIMESTAMP NOT NULL
 );

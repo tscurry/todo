@@ -1,8 +1,11 @@
-export const getUserLists = async () => {
+export const getUserLists = async (token: string | null) => {
   try {
     const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/lists`, {
       method: 'GET',
       credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
     const data = await response.json();
     return data.lists;
@@ -11,11 +14,11 @@ export const getUserLists = async () => {
   }
 };
 
-export const getListTodos = async (id: number) => {
+export const getListTodos = async (id: number, token: string | null) => {
   try {
     const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/lists/${id}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       credentials: 'include',
     });
 
@@ -26,11 +29,11 @@ export const getListTodos = async (id: number) => {
   }
 };
 
-export const postNewList = async (name: string) => {
+export const postNewList = async (name: string, token: string | null) => {
   try {
     const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/lists`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ name }),
       credentials: 'include',
     });

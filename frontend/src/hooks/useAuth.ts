@@ -3,13 +3,16 @@ import * as authAPI from '../api/auth';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { User } from '../utils/types';
 import { createTempUid } from '../utils/createTempUid';
+import { useAuth } from '../context/AuthContext';
 
-export const useAuth = () => {
+export const useAuthentication = () => {
   const [userError, setUserError] = React.useState(false);
   const [passwordError, setPasswordError] = React.useState(false);
   const [signupError, setSignupError] = React.useState(false);
 
   const queryClient = useQueryClient();
+
+  const { accessToken, setAccessToken, setUser, setIsLoading } = useAuth();
 
   const resetErrors = () => {
     setPasswordError(false);
@@ -18,18 +21,22 @@ export const useAuth = () => {
   };
 
   const verifyAuth = async () => {
-    const status = await authAPI.checkAuthStatus();
+    const token = await authAPI.refreshAccessToken(accessToken);
 
-    if (status) {
-      const username = await authAPI.getUser();
-      if (username) {
+    if (token.accessToken) {
+      setAccessToken(token.accessToken);
+
+      const response = await authAPI.getUser(token.accessToken);
+      if (response.user) {
+        setUser(response.user);
         localStorage.removeItem('temp_uid');
-      } else {
-        createTempUid();
+        setIsLoading(false);
       }
-      return username;
     } else {
-      return null;
+      createTempUid();
+      setAccessToken(null);
+      setUser(null);
+      setIsLoading(false);
     }
   };
 
@@ -40,6 +47,7 @@ export const useAuth = () => {
   } = useQuery({
     queryKey: ['user'],
     queryFn: () => verifyAuth(),
+    retry: false,
   });
 
   const signup = useMutation({

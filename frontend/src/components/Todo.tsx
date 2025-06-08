@@ -10,7 +10,7 @@ import DatePickerCalendar from './DatePicker';
 import Overlay from './Overlay';
 import { useTodos } from '../hooks/useTodos';
 import { useLists } from '../hooks/useLists';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import { useListId } from '../context/ListContext';
 
 const Todo = () => {
@@ -83,7 +83,7 @@ const Todo = () => {
       <div className="lgmd:mt-14 w-[90%] lg:w-[80%] mx-auto flex items-center justify-between">
         <div>
           <h1 className="font-semibold text-xl xlsm:text-2xl">
-            {user ? customGreeting(user) : customGreeting()}
+            {user ? customGreeting(user.username) : customGreeting()}
           </h1>
           <p className="xlsm:text-lg text-[grey] mt-1 font-light">
             {formattedDate === today ? `Today, ${formattedDate}` : formattedDate}

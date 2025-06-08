@@ -27,7 +27,7 @@ const ListProvider = ({ children }: ContextProviderProps) => {
 export const useListId = () => {
   const context = React.useContext(ListContext);
   if (!context) {
-    throw new Error('useList must be used within a AuthProvider');
+    throw new Error('useList must be used within a ListProvider');
   }
   return context;
 };

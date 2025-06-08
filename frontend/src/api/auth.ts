@@ -1,31 +1,39 @@
 import { User } from '../utils/types';
 
-//check auth status
-export const checkAuthStatus = async () => {
-  try {
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/status`, {
-      method: 'GET',
-      credentials: 'include',
-    });
-    const data = await response.json();
-    return data.isAuthenticated;
-  } catch (error) {
-    // console.error(error);
-    throw new Error('There was an unexpected error. Please refresh page to continue');
-  }
-};
-
 //get username
-export const getUser = async () => {
+export const getUser = async (accessToken: string | null) => {
   try {
     const respnse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/user`, {
       method: 'GET',
       credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
-    const data = await respnse.json();
-    return data?.username || null;
+
+    if (respnse.status === 200) return await respnse.json();
+    else if (respnse.status === 401) return 'Unauthorized';
+    else if (respnse.status === 403) return 'Renew';
   } catch (error) {
-    // console.error(error);
+    throw new Error('There was an unexpected error. Please refresh page to continue');
+  }
+};
+
+export const refreshAccessToken = async (accessToken: string | null) => {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    if (response.status === 200) {
+      return await response.json();
+    } else {
+      return 'Denied';
+    }
+  } catch (error) {
     throw new Error('There was an unexpected error. Please refresh page to continue');
   }
 };
@@ -52,7 +60,6 @@ export const createUser = async (user: User) => {
 
     return await response.json();
   } catch (error) {
-    // console.error(error);
     throw new Error('There was an unexpected error. Please refresh page to continue');
   }
 };
@@ -72,7 +79,6 @@ export const loginUser = async (user: User) => {
 
     return await response.json();
   } catch (error) {
-    // console.error(error);
     throw new Error('There was an unexpected error. Please refresh page to continue');
   }
 };
@@ -87,7 +93,6 @@ export const logoutUser = async () => {
 
     return await response.json();
   } catch (error) {
-    // console.error(error);
     throw new Error('There was an unexpected error. Please refresh page to continue');
   }
 };

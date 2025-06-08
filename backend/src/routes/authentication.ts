@@ -32,15 +32,14 @@ router.get('/user', authenticateToken, async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: 'failure to get user' });
+    console.error('Database error in /user route: ', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 router.post('/signup', async (req, res) => {
   const { username, password, temp_uid } = req.body;
   const user_uid = uuidv4();
-
-  console.log(req.body);
 
   try {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
@@ -65,7 +64,7 @@ router.post('/signup', async (req, res) => {
     const refreshToken = generateRefreshToken(newUser.rows[0]);
 
     await pool.query(
-      'INSERT INTO refresh_tokens (user_uid, token, expires_at) VALUES ($1, $2, $3) ON CONFLICT (user_uid) DO UPDATE SET token = $2, expires at = $3;',
+      'INSERT INTO refresh_tokens (user_uid, token, expires_at) VALUES ($1, $2, $3) ON CONFLICT (user_uid) DO UPDATE SET token = $2, expires_at = $3;',
       [user_uid, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)],
     );
 
@@ -103,7 +102,7 @@ router.post('/login', async (req, res) => {
     const refreshToken = generateRefreshToken(user);
 
     await pool.query(
-      'INSERT INTO refresh_tokens (user_uid, token, expires_at) VALUES ($1, $2, $3) ON CONFLICT (user_uid) DO UPDATE SET token = $2, expires at = $3;',
+      'INSERT INTO refresh_tokens (user_uid, token, expires_at) VALUES ($1, $2, $3) ON CONFLICT (user_uid) DO UPDATE SET token = $2, expires_at = $3;',
       [user.user_uid, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)],
     );
 
@@ -131,6 +130,11 @@ router.post('/refresh', authenticateRefreshToken, async (req, res) => {
       [userFromToken.user_uid, refreshToken],
     );
 
+    // check if token is expiring; renew
+    const currentExpiry = new Date(storedToken.rows[0]?.expires_at);
+    const now = new Date();
+    const shouldExtend = currentExpiry.getTime() - now.getTime() < 24 * 60 * 60 * 1000;
+
     if (storedToken.rows.length === 0) {
       await pool.query('DELETE FROM refresh_tokens WHERE user_uid = $1;', [userFromToken.user_uid]);
       res.clearCookie('refreshToken', { path: '/auth' });
@@ -150,15 +154,16 @@ router.post('/refresh', authenticateRefreshToken, async (req, res) => {
     }
 
     const newAccessToken = generateToken(user.rows[0]);
-    const newrefreshToken = generateRefreshToken(user.rows[0]);
+    const newRefreshToken = generateRefreshToken(user.rows[0]);
 
-    await pool.query('UPDATE refresh_tokens SET token = $1, expires at = $2 WHERE user_uid = $3;', [
-      newrefreshToken,
-      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    //update token but only extend expiration if close to expiring (<1d)
+    await pool.query('UPDATE refresh_tokens SET token = $1, expires_at = $2 WHERE user_uid = $3;', [
+      newRefreshToken,
+      shouldExtend ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : currentExpiry,
       user.rows[0].user_uid,
     ]);
 
-    res.cookie('refreshToken', newrefreshToken, refreshTokenCookieOptions);
+    res.cookie('refreshToken', newRefreshToken, refreshTokenCookieOptions);
 
     res.json({
       accessToken: newAccessToken,

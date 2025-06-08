@@ -2,13 +2,13 @@ import express from 'express';
 import pool from '../database/db';
 import { QueryResult } from 'pg';
 import { Todos } from '../utils/types';
-import { authenticateToken } from '../middleware/token.middleware';
+import { optionalAuthenticateToken } from '../middleware/token.middleware';
 
 const router = express.Router();
 
-router.get('/total', authenticateToken, async (req, res) => {
+router.get('/total', optionalAuthenticateToken, async (req, res) => {
   const { temp_uid } = req.query;
-  const { user_uid } = req.user;
+  const user_uid = req.user?.user_uid;
 
   let count;
 
@@ -29,9 +29,9 @@ router.get('/total', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', optionalAuthenticateToken, async (req, res) => {
   const { temp_uid } = req.query;
-  const { user_uid } = req.user;
+  const user_uid = req.user?.user_uid;
 
   let todos: QueryResult<Todos>;
 
@@ -57,9 +57,9 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/completed', authenticateToken, async (req, res) => {
+router.get('/completed', optionalAuthenticateToken, async (req, res) => {
   const { temp_uid } = req.query;
-  const { user_uid } = req.user;
+  const user_uid = req.user?.user_uid;
 
   let count;
   let completed;
@@ -97,9 +97,9 @@ router.get('/completed', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', optionalAuthenticateToken, async (req, res) => {
   const { title, due_date, temp_uid, list_name } = req.body;
-  const { user_uid } = req.user;
+  const user_uid = req.user?.user_uid;
 
   let todos: QueryResult<Todos>;
 
@@ -144,10 +144,10 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-router.put('/:todo_id', authenticateToken, async (req, res) => {
+router.put('/:todo_id', optionalAuthenticateToken, async (req, res) => {
   const { todo_id } = req.params;
   const { title, due_date, list_name } = req.body;
-  const { user_uid } = req.user;
+  const user_uid = req.user?.user_uid;
 
   let list_id;
 

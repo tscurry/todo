@@ -61,6 +61,20 @@ export type ListProps = {
   selectedList?: number;
 };
 
+export type AuthUser = {
+  user_uid: string;
+  username: string;
+};
+
+export type AuthContextProps = {
+  user: AuthUser | null;
+  accessToken: string | null;
+  isLoading: boolean;
+  setAccessToken: (accessToken: string | null) => void;
+  setUser: (user: AuthUser | null) => void;
+  setIsLoading: (loading: boolean) => void;
+};
+
 export type ContextProviderProps = {
   children: React.ReactNode;
 };

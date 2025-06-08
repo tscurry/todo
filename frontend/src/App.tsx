@@ -5,6 +5,7 @@ import { GlobalLoadingOverlay } from './components/Overlay';
 
 import { keepPreviousData, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ListProvider from './context/ListContext';
+import { AuthProvider } from './context/AuthContext';
 
 const queryClient = new QueryClient();
 
@@ -16,20 +17,22 @@ const App = () => {
   });
 
   return (
-    <ListProvider>
-      <QueryClientProvider client={queryClient}>
-        <div className="grid-container transition-all">
-          <GlobalLoadingOverlay />
-          <AuthHeader />
-          <Header />
-          <Dashboard />
-          <Todo />
-          <div className="create-task-button flex items-center">
-            <NewTask />
+    <AuthProvider>
+      <ListProvider>
+        <QueryClientProvider client={queryClient}>
+          <div className="grid-container transition-all">
+            <GlobalLoadingOverlay />
+            <AuthHeader />
+            <Header />
+            <Dashboard />
+            <Todo />
+            <div className="create-task-button flex items-center">
+              <NewTask />
+            </div>
           </div>
-        </div>
-      </QueryClientProvider>
-    </ListProvider>
+        </QueryClientProvider>
+      </ListProvider>
+    </AuthProvider>
   );
 };
 
