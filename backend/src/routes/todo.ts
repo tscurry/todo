@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.get('/total', optionalAuthenticateToken, async (req, res) => {
   const { temp_uid } = req.query;
-  const user_uid = req.user?.user_uid;
+  const { user_uid } = req.user;
 
   let count;
 
@@ -31,7 +31,7 @@ router.get('/total', optionalAuthenticateToken, async (req, res) => {
 
 router.get('/', optionalAuthenticateToken, async (req, res) => {
   const { temp_uid } = req.query;
-  const user_uid = req.user?.user_uid;
+  const { user_uid } = req.user;
 
   let todos: QueryResult<Todos>;
 
@@ -59,7 +59,7 @@ router.get('/', optionalAuthenticateToken, async (req, res) => {
 
 router.get('/completed', optionalAuthenticateToken, async (req, res) => {
   const { temp_uid } = req.query;
-  const user_uid = req.user?.user_uid;
+  const { user_uid } = req.user;
 
   let count;
   let completed;
@@ -99,7 +99,7 @@ router.get('/completed', optionalAuthenticateToken, async (req, res) => {
 
 router.post('/', optionalAuthenticateToken, async (req, res) => {
   const { title, due_date, temp_uid, list_name } = req.body;
-  const user_uid = req.user?.user_uid;
+  const { user_uid } = req.user;
 
   let todos: QueryResult<Todos>;
 
@@ -147,7 +147,7 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
 router.put('/:todo_id', optionalAuthenticateToken, async (req, res) => {
   const { todo_id } = req.params;
   const { title, due_date, list_name } = req.body;
-  const user_uid = req.user?.user_uid;
+  const { user_uid } = req.user;
 
   let list_id;
 
