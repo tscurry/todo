@@ -13,7 +13,7 @@
   "include": [
     "src/",
     "server.ts",
-    "src/types.d.ts",
+    "src/express.d.ts",
     "index.d.ts"
   ]
 }
