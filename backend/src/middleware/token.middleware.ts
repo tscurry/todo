@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
+import { User } from '../utils/types';
 
 interface TokenUser {
   user_uid: string;
@@ -30,7 +31,7 @@ export const optionalAuthenticateToken = (req: Request, res: Response, next: Nex
     if (err || !isTokenUser(payload)) {
       req.user = undefined;
     } else {
-      req.user = payload;
+      req.user = payload as User;
     }
     next();
   });
@@ -46,7 +47,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     if (err || !isTokenUser(payload)) {
       return res.status(403).json({ error: 'Invalid or expired token. Access Denied.' });
     }
-    req.user = payload;
+    req.user = payload as User;
     next();
   });
 };
@@ -63,7 +64,7 @@ export const authenticateRefreshToken = (req: Request, res: Response, next: Next
       if (err || !isTokenUser(payload)) {
         return res.status(403).json({ error: 'Invalid or expired refresh token. Access Denied.' });
       }
-      req.user = payload;
+      req.user = payload as User;
       next();
     },
   );

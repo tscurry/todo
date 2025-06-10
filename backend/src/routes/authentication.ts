@@ -16,21 +16,24 @@ const saltRounds = 10;
 
 router.get('/user', authenticateToken, async (req, res) => {
   let user: QueryResult<User>;
+  const { user_uid } = req.user;
 
   try {
-    user = await pool.query('SELECT * FROM users WHERE user_uid = $1;', [req.user.user_uid]);
+    if (user_uid) {
+      user = await pool.query('SELECT * FROM users WHERE user_uid = $1;', [req.user.user_uid]);
 
-    if (user.rows.length === 0) {
-      return res.status(404).json({ error: 'user not found' });
+      if (user.rows.length === 0) {
+        return res.status(404).json({ error: 'user not found' });
+      }
+
+      res.status(200).json({
+        isAuthenticated: true,
+        user: {
+          user_uid: user.rows[0].user_uid,
+          username: user.rows[0].username,
+        },
+      });
     }
-
-    res.status(200).json({
-      isAuthenticated: true,
-      user: {
-        user_uid: user.rows[0].user_uid,
-        username: user.rows[0].username,
-      },
-    });
   } catch (error) {
     console.error('Database error in /user route: ', error);
     res.status(500).json({ error: 'Internal server error' });

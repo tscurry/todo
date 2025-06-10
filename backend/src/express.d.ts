@@ -1,10 +1,9 @@
+import { User } from './utils/types';
+
 declare global {
   namespace Express {
     interface Request {
-      user?: {
-        user_uid: string;
-        username: string;
-      };
+      user: User | undefined;
     }
   }
 }
