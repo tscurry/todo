@@ -27,16 +27,19 @@ export const useAuthentication = () => {
       setAccessToken(token.accessToken);
 
       const response = await authAPI.getUser(token.accessToken);
+
       if (response.user) {
         setUser(response.user);
         localStorage.removeItem('temp_uid');
         setIsLoading(false);
+        return response.user;
       }
     } else {
       createTempUid();
       setAccessToken(null);
       setUser(null);
       setIsLoading(false);
+      return null;
     }
   };
 
@@ -48,6 +51,8 @@ export const useAuthentication = () => {
     queryKey: ['user'],
     queryFn: () => verifyAuth(),
     retry: false,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const signup = useMutation({

@@ -76,7 +76,6 @@ export const loginUser = async (user: User) => {
       }),
       credentials: 'include',
     });
-
     return await response.json();
   } catch (error) {
     throw new Error('There was an unexpected error. Please refresh page to continue');
