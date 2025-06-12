@@ -38,7 +38,7 @@ export const useTodos = (listId: number) => {
     queryKey: ['todos', listId ?? 'all', accessToken],
     queryFn: () => getTodos(accessToken),
     enabled: !authLoading,
-    staleTime: 30 * 1000,
+    staleTime: Infinity,
   });
 
   const todos = listId === 0 ? data?.completed?.completedTodos ?? [] : data?.todos ?? [];

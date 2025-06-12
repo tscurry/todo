@@ -18,7 +18,7 @@ export const useLists = () => {
     queryKey: ['lists'],
     queryFn: () => listAPI.getUserLists(accessToken),
     enabled: !!accessToken,
-    staleTime: 2 * 60 * 1000,
+    staleTime: Infinity,
     refetchOnWindowFocus: false,
   });
 
