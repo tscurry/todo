@@ -13,6 +13,9 @@ const App = () => {
   queryClient.setDefaultOptions({
     queries: {
       placeholderData: keepPreviousData,
+      staleTime: 2 * 60 * 1000,
+      retry: 2,
+      refetchOnWindowFocus: false,
     },
   });
 
