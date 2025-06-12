@@ -8,16 +8,15 @@ const router = express.Router();
 
 router.get('/total', optionalAuthenticateToken, async (req, res) => {
   const { temp_uid } = req.query;
+  const { user_uid } = req.user;
 
   let count;
 
   try {
-    if (temp_uid === '' && !req.user)
+    if (temp_uid === '' && typeof user_uid === 'undefined')
       return res.status(400).send('temp_uid is required for unauthenticated users');
 
-    if (req.user) {
-      const { user_uid } = req.user;
-
+    if (typeof user_uid !== 'undefined') {
       count = await pool.query('SELECT COUNT(*) FROM todos WHERE user_uid = $1', [user_uid]);
     } else {
       count = await pool.query('SELECT COUNT(*) FROM todos WHERE temp_uid = $1', [temp_uid]);
@@ -32,16 +31,15 @@ router.get('/total', optionalAuthenticateToken, async (req, res) => {
 
 router.get('/', optionalAuthenticateToken, async (req, res) => {
   const { temp_uid } = req.query;
+  const { user_uid } = req.user;
 
   let todos: QueryResult<Todos>;
 
   try {
-    if (temp_uid === '' && !req.user)
+    if (temp_uid === '' && typeof user_uid === 'undefined')
       return res.status(400).send('temp_uid is required for unauthenticated users');
 
-    if (req.user) {
-      const { user_uid } = req.user;
-
+    if (typeof user_uid !== 'undefined') {
       todos = await pool.query(
         'SELECT todos.*, user_lists.color FROM todos LEFT JOIN list_todos ON list_todos.todo_id = todos.todo_id LEFT JOIN user_lists ON user_lists.list_id = list_todos.list_id WHERE todos.user_uid = $1 AND todos.is_completed = $2 ORDER BY due_date;',
         [user_uid, false],
@@ -61,16 +59,16 @@ router.get('/', optionalAuthenticateToken, async (req, res) => {
 
 router.get('/completed', optionalAuthenticateToken, async (req, res) => {
   const { temp_uid } = req.query;
+  const { user_uid } = req.user;
 
   let count;
   let completed;
 
   try {
-    if (temp_uid === '' && !req.user)
+    if (temp_uid === '' && typeof user_uid === 'undefined')
       return res.status(400).send('temp_uid is required for unauthenticated users');
 
-    if (req.user) {
-      const { user_uid } = req.user;
+    if (typeof user_uid !== 'undefined') {
       count = await pool.query(
         'SELECT COUNT(is_completed) FROM todos WHERE is_completed = $1 AND user_uid = $2;',
         [true, user_uid],
@@ -101,16 +99,15 @@ router.get('/completed', optionalAuthenticateToken, async (req, res) => {
 
 router.post('/', optionalAuthenticateToken, async (req, res) => {
   const { title, due_date, temp_uid, list_name } = req.body;
+  const { user_uid } = req.user;
 
   let todos: QueryResult<Todos>;
 
   try {
-    if (temp_uid === '' && !req.user)
+    if (temp_uid === '' && typeof user_uid === 'undefined')
       return res.status(400).json('temp_uid is required for unauthenticated users');
 
-    if (req.user) {
-      const { user_uid } = req.user;
-
+    if (typeof user_uid !== 'undefined') {
       todos = await pool.query(
         'INSERT INTO todos (user_uid, title, due_date) VALUES($1, $2, $3) RETURNING todo_id;',
         [user_uid, title, due_date],
@@ -150,6 +147,7 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
 router.put('/:todo_id', optionalAuthenticateToken, async (req, res) => {
   const { todo_id } = req.params;
   const { title, due_date, list_name } = req.body;
+  const { user_uid } = req.user;
 
   let list_id;
 
@@ -158,9 +156,7 @@ router.put('/:todo_id', optionalAuthenticateToken, async (req, res) => {
       return res.status(400).json('something has to be updated');
     }
 
-    if (list_name && req.user) {
-      const { user_uid } = req.user;
-
+    if (list_name) {
       const list = await pool.query(
         'SELECT list_id FROM user_lists WHERE name = $1 AND user_uid = $2',
         [list_name, user_uid],

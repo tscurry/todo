@@ -10,17 +10,16 @@ const router = express.Router();
 let lists: QueryResult<Lists>;
 
 router.get('/', authenticateToken, async (req, res) => {
-  try {
-    if (req.user) {
-      const { user_uid } = req.user;
-      // get list names
-      lists = await pool.query(
-        'SELECT user_lists.list_id, user_lists.name, user_lists.color, COUNT(list_todos.todo_id) AS item_count FROM user_lists LEFT JOIN list_todos ON user_lists.list_id = list_todos.list_id WHERE user_lists.user_uid = $1 GROUP BY user_lists.list_id, user_lists.name;',
-        [user_uid],
-      );
+  const { user_uid } = req.user;
 
-      res.status(200).json({ lists: lists.rows });
-    }
+  try {
+    // get list names
+    lists = await pool.query(
+      'SELECT user_lists.list_id, user_lists.name, user_lists.color, COUNT(list_todos.todo_id) AS item_count FROM user_lists LEFT JOIN list_todos ON user_lists.list_id = list_todos.list_id WHERE user_lists.user_uid = $1 GROUP BY user_lists.list_id, user_lists.name;',
+      [user_uid],
+    );
+
+    res.status(200).json({ lists: lists.rows });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "error retrieving users' lists" });
@@ -29,14 +28,12 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.get('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
+  const { user_uid } = req.user;
 
   let todos: QueryResult<Todos>;
 
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const { user_uid } = req.user;
+    if (typeof user_uid === 'undefined') return res.status(404).send('invalid user_uid');
 
     todos = await pool.query(
       'SELECT todos.*, user_lists.color FROM todos JOIN list_todos ON todos.todo_id = list_todos.todo_id JOIN user_lists ON list_todos.list_id = user_lists.list_id WHERE list_todos.list_id = $1 AND todos.user_uid = $2 ORDER BY todos.due_date;',
@@ -52,14 +49,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
   const { name } = req.body;
+  const { user_uid } = req.user;
   let color = colorGenerator();
 
   let list: QueryResult<Lists>;
 
   // change to use user_uid not test id
   try {
-    if (req.user) {
-      const { user_uid } = req.user;
+    if (typeof user_uid !== 'undefined') {
       // check for color conflicts
       let colorExists = true;
 
@@ -90,9 +87,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { name } = req.body;
 
+  const { user_uid } = req.user;
+
   try {
-    if (name && req.user) {
-      const { user_uid } = req.user;
+    if (name) {
       await pool.query('UPDATE user_lists SET name = $1 WHERE list_id = $2 AND user_uid = $3;', [
         name,
         Number(id),

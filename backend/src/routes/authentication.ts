@@ -16,11 +16,11 @@ const saltRounds = 10;
 
 router.get('/user', authenticateToken, async (req, res) => {
   let user: QueryResult<User>;
+  const { user_uid } = req.user;
 
   try {
-    if (req.user) {
-      const { user_uid } = req.user;
-      user = await pool.query('SELECT * FROM users WHERE user_uid = $1;', [user_uid]);
+    if (user_uid) {
+      user = await pool.query('SELECT * FROM users WHERE user_uid = $1;', [req.user.user_uid]);
 
       if (user.rows.length === 0) {
         return res.status(404).json({ error: 'user not found' });
@@ -126,55 +126,49 @@ router.post('/login', async (req, res) => {
 router.post('/refresh', authenticateRefreshToken, async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken;
+    const { user_uid } = req.user;
 
-    if (req.user) {
-      const { user_uid } = req.user;
+    const storedToken = await pool.query(
+      'SELECT * FROM refresh_tokens WHERE user_uid = $1 AND token = $2 AND expires_at > NOW();',
+      [user_uid, refreshToken],
+    );
 
-      const storedToken = await pool.query(
-        'SELECT * FROM refresh_tokens WHERE user_uid = $1 AND token = $2 AND expires_at > NOW();',
-        [user_uid, refreshToken],
-      );
+    // check if token is expiring; renew
+    const currentExpiry = new Date(storedToken.rows[0]?.expires_at);
+    const now = new Date();
+    const shouldExtend = currentExpiry.getTime() - now.getTime() < 24 * 60 * 60 * 1000;
 
-      // check if token is expiring; renew
-      const currentExpiry = new Date(storedToken.rows[0]?.expires_at);
-      const now = new Date();
-      const shouldExtend = currentExpiry.getTime() - now.getTime() < 24 * 60 * 60 * 1000;
+    if (storedToken.rows.length === 0) {
+      await pool.query('DELETE FROM refresh_tokens WHERE user_uid = $1;', [user_uid]);
+      res.clearCookie('refreshToken', { path: '/auth' });
 
-      if (storedToken.rows.length === 0) {
-        await pool.query('DELETE FROM refresh_tokens WHERE user_uid = $1;', [user_uid]);
-        res.clearCookie('refreshToken', { path: '/auth' });
-
-        return res.status(403).json({ error: 'Invalid or expired refresh token' });
-      }
-
-      const user = await pool.query('SELECT * FROM users where user_uid = $1;', [user_uid]);
-
-      if (user.rows.length === 0) {
-        await pool.query('DELETE FROM refresh_tokens WHERE user_uid = $1;', [user_uid]);
-        res.clearCookie('refreshToken', { path: '/auth' });
-
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      const newAccessToken = generateToken(user.rows[0]);
-      const newRefreshToken = generateRefreshToken(user.rows[0]);
-
-      //update token but only extend expiration if close to expiring (<1d)
-      await pool.query(
-        'UPDATE refresh_tokens SET token = $1, expires_at = $2 WHERE user_uid = $3;',
-        [
-          newRefreshToken,
-          shouldExtend ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : currentExpiry,
-          user.rows[0].user_uid,
-        ],
-      );
-
-      res.cookie('refreshToken', newRefreshToken, refreshTokenCookieOptions);
-
-      res.json({
-        accessToken: newAccessToken,
-      });
+      return res.status(403).json({ error: 'Invalid or expired refresh token' });
     }
+
+    const user = await pool.query('SELECT * FROM users where user_uid = $1;', [user_uid]);
+
+    if (user.rows.length === 0) {
+      await pool.query('DELETE FROM refresh_tokens WHERE user_uid = $1;', [user_uid]);
+      res.clearCookie('refreshToken', { path: '/auth' });
+
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const newAccessToken = generateToken(user.rows[0]);
+    const newRefreshToken = generateRefreshToken(user.rows[0]);
+
+    //update token but only extend expiration if close to expiring (<1d)
+    await pool.query('UPDATE refresh_tokens SET token = $1, expires_at = $2 WHERE user_uid = $3;', [
+      newRefreshToken,
+      shouldExtend ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : currentExpiry,
+      user.rows[0].user_uid,
+    ]);
+
+    res.cookie('refreshToken', newRefreshToken, refreshTokenCookieOptions);
+
+    res.json({
+      accessToken: newAccessToken,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error refreshing token' });
@@ -183,12 +177,9 @@ router.post('/refresh', authenticateRefreshToken, async (req, res) => {
 
 router.post('/logout', authenticateRefreshToken, async (req, res) => {
   try {
-    if (req.user) {
-      const { user_uid } = req.user;
-      await pool.query('DELETE FROM refresh_tokens WHERE user_uid = $1;', [user_uid]);
-      res.clearCookie('refreshToken', { path: '/auth' });
-      res.status(200).json({ message: 'logged out successfully' });
-    }
+    await pool.query('DELETE FROM refresh_tokens WHERE user_uid = $1;', [req.user.user_uid]);
+    res.clearCookie('refreshToken', { path: '/auth' });
+    res.status(200).json({ message: 'logged out successfully' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error during logout' });
